@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if recipe %}Edit {{ recipe.name }}{% else %}New recipe{% endif %} · Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin">
+  {% set nav_current = 'admin-recipes' %}
+  {% set breadcrumbs = [
+    {"label": "Admin", "url": url_for("admin")},
+    {"label": "Recipes", "url": url_for("admin_recipes")},
+    {"label": (recipe.name if recipe else "New recipe"), "url": None},
+  ] %}
+  {% include "_site_chrome.html" %}
+  <header class="admin-header">
+    <div>
+      <h1>{% if recipe %}Edit recipe{% else %}New recipe{% endif %}</h1>
+    </div>
+    <nav class="admin-nav">
+      {% if recipe %}
+      <a class="btn ghost" href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}">View</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% if recipe %}
+  <section class="panel">
+    <h2>Guest ratings</h2>
+    {% if rating %}
+    <p class="rating-line">
+      {% for i in range(1, 6) %}
+      <span class="star {% if i <= rating.avg|round|int %}filled{% endif %}" aria-hidden="true">★</span>
+      {% endfor %}
+      <span class="rating-meta">{{ '%.1f'|format(rating.avg) }} · {{ rating.count }} rating{{ 's' if rating.count != 1 else '' }}</span>
+    </p>
+    <form method="post" action="{{ url_for('clear_recipe_ratings', recipe_id=recipe.id) }}"
+          onsubmit="return confirm('Delete all ratings for {{ recipe.name }}?');">
+      <input type="hidden" name="next" value="edit">
+      <button type="submit" class="btn ghost">Clear ratings</button>
+    </form>
+    {% else %}
+    <p class="muted">No ratings yet.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <form method="post"
+        action="{% if recipe %}{{ url_for('admin_recipe_edit', recipe_id=recipe.id) }}{% else %}{{ url_for('admin_recipe_new') }}{% endif %}">
+    <section class="panel">
+      <h2>Details</h2>
+      <div class="form-grid">
+        <label class="span-2">Name
+          <input name="name" required value="{{ recipe.name if recipe else '' }}" placeholder="e.g. Rum and Coke">
+        </label>
+        <label>Category
+          <input name="category" list="recipe-categories"
+                 value="{{ recipe.category if recipe else 'Cocktail' }}">
+        </label>
+        <label>Glassware / vessel
+          <input name="glassware" list="glassware-options"
+                 value="{{ recipe.glassware if recipe else '' }}"
+                 placeholder="Highball, Rocks, Plate…">
+        </label>
+        <datalist id="glassware-options">
+          <option value="Highball">
+          <option value="Collins">
+          <option value="Rocks">
+          <option value="Coupe">
+          <option value="Martini">
+          <option value="Copper mug">
+          <option value="Wine">
+          <option value="Mug">
+          <option value="Plate">
+          <option value="Bowl">
+        </datalist>
+        <label>Sort order
+          <input name="sort_order" type="number"
+                 value="{{ recipe.sort_order if recipe else 0 }}">
+        </label>
+        <label>Tags
+          <input name="tags" value="{{ recipe.tags if recipe else '' }}"
+                 placeholder="classic, easy, summer">
+        </label>
+        <label class="span-2">Short description
+          <input name="description" value="{{ recipe.description if recipe else '' }}"
+                 placeholder="One-line blurb for lists and the TV">
+        </label>
+        <label class="span-2">Instructions / method
+          <textarea name="instructions" rows="6"
+                    placeholder="Step-by-step how to make it">{{ recipe.instructions if recipe else '' }}</textarea>
+        </label>
+        <label class="span-2">Notes
+          <textarea name="notes" rows="3"
+                    placeholder="Tips, substitutions, host notes">{{ recipe.notes if recipe else '' }}</textarea>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="published"
+                 {% if not recipe or recipe.published %}checked{% endif %}>
+          Published (show on menu when filter allows)
+        </label>
+      </div>
+      <datalist id="recipe-categories">
+        <option value="Cocktail">
+        <option value="Mocktail">
+        <option value="Coffee">
+        <option value="Other">
+      </datalist>
+    </section>
+
+    <section class="panel">
+      <h2>Themes</h2>
+      <p class="muted small-gap">A drink can live in several themes. Guests only see it when they can make it.</p>
+      {% for family in theme_catalog %}
+      <h3 class="theme-edit-family">{{ family.name }}</h3>
+      <div class="theme-check-grid">
+        {% for t in family.themes %}
+        <label class="check">
+          <input type="checkbox" name="theme_id" value="{{ t.id }}"
+                 {% if t.id in selected_theme_ids %}checked{% endif %}>
+          {{ t.name }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <h2>Ingredients</h2>
+      <p class="muted small-gap">
+        Necessary ingredients must be on hand for the recipe to appear.
+        Optional ones (garnishes, ice) never hide a recipe.
+      </p>
+      <div class="line-editor" id="line-editor">
+        <div class="line-editor-head">
+          <span>Ingredient</span>
+          <span>Measure</span>
+          <span>Necessary?</span>
+          <span>Sort</span>
+          <span></span>
+        </div>
+        {% for line in lines %}
+        <div class="line-row">
+          <select name="line_ingredient_id" required>
+            <option value="">— pick —</option>
+            {% for ing in ingredients %}
+            <option value="{{ ing.id }}"
+              {% if ing.id == line.ingredient_id %}selected{% endif %}>
+              {{ ing.name }} ({{ ing.category }})
+            </option>
+            {% endfor %}
+          </select>
+          <input name="line_measure" value="{{ line.measure }}" placeholder="2 oz">
+          <select name="line_necessary">
+            <option value="1" {% if line.necessary %}selected{% endif %}>Necessary</option>
+            <option value="0" {% if not line.necessary %}selected{% endif %}>Optional</option>
+          </select>
+          <input name="line_sort_order" type="number" value="{{ line.line_sort }}">
+          <button type="button" class="btn ghost sm remove-line" aria-label="Remove line">✕</button>
+        </div>
+        {% endfor %}
+        {% for _ in range(blank_rows) %}
+        <div class="line-row">
+          <select name="line_ingredient_id">
+            <option value="">— pick —</option>
+            {% for ing in ingredients %}
+            <option value="{{ ing.id }}">{{ ing.name }} ({{ ing.category }})</option>
+            {% endfor %}
+          </select>
+          <input name="line_measure" value="" placeholder="2 oz">
+          <select name="line_necessary">
+            <option value="1" selected>Necessary</option>
+            <option value="0">Optional</option>
+          </select>
+          <input name="line_sort_order" type="number" value="">
+          <button type="button" class="btn ghost sm remove-line" aria-label="Remove line">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      <template id="line-row-template">
+        <div class="line-row">
+          <select name="line_ingredient_id">
+            <option value="">— pick —</option>
+            {% for ing in ingredients %}
+            <option value="{{ ing.id }}">{{ ing.name }} ({{ ing.category }})</option>
+            {% endfor %}
+          </select>
+          <input name="line_measure" value="" placeholder="2 oz">
+          <select name="line_necessary">
+            <option value="1" selected>Necessary</option>
+            <option value="0">Optional</option>
+          </select>
+          <input name="line_sort_order" type="number" value="">
+          <button type="button" class="btn ghost sm remove-line" aria-label="Remove line">✕</button>
+        </div>
+      </template>
+      <div class="actions-row" style="margin-top: 0.75rem">
+        <button type="button" class="btn ghost" id="add-line">Add ingredient line</button>
+      </div>
+      {% if not ingredients %}
+      <p class="flash error" style="margin-top: 1rem">
+        No ingredients in the catalog yet.
+      </p>
+      {% endif %}
+    </section>
+
+    <div class="actions-row sticky-actions">
+      <button type="submit" class="btn primary">
+        {% if recipe %}Save recipe{% else %}Create recipe{% endif %}
+      </button>
+      <a class="btn ghost" href="{{ url_for('admin_recipes') }}">Cancel</a>
+    </div>
+  </form>
+
+  {% if recipe %}
+  <form method="post" action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}"
+        onsubmit="return confirm('Delete {{ recipe.name }}?');" class="actions-row">
+    <button type="submit" class="btn danger">Delete recipe</button>
+  </form>
+  {% endif %}
+
+  <script>
+    (function () {
+      var editor = document.getElementById('line-editor');
+      var tmpl = document.getElementById('line-row-template');
+      var addBtn = document.getElementById('add-line');
+      if (addBtn && tmpl && editor) {
+        addBtn.addEventListener('click', function () {
+          editor.appendChild(tmpl.content.cloneNode(true));
+        });
+      }
+      if (editor) {
+        editor.addEventListener('click', function (e) {
+          var btn = e.target.closest('.remove-line');
+          if (!btn) return;
+          var row = btn.closest('.line-row');
+          if (row) row.remove();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if stock %}Stock at {{ bar_name }}{% elif theme %}{{ theme.name }} · {{ bar_name }}{% elif theme_index %}Themes · {{ bar_name }}{% else %}{{ bar_name }}{% endif %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="tv{% if theme %} tv-theme{% endif %}{% if theme_index %} tv-theme-index{% endif %}{% if stock %} tv-stock{% endif %}"
+      data-recipe-count="{{ recipe_count }}"
+      data-theme-slug="{{ theme.slug if theme else '' }}"
+      data-tv-board="{{ tv_board|default('main') }}"
+      data-tv-menu-url="{{ url_for('tv_menu') }}"
+      data-tv-stock-live-url="{{ url_for('tv_stock') }}"
+      data-tv-follow-url="{{ url_for('tv_follow') }}"
+      data-tv-made-url="{{ url_for('tv_made') }}"
+      data-tv-show-url="{{ url_for('tv_show') }}"
+      data-density="{% if recipe_count <= 4 %}roomy{% elif recipe_count <= 8 %}normal{% else %}dense{% endif %}"
+      {% if palette_style %}style="{{ palette_style }}"{% endif %}>
+  {# .tv-frame = decorative border + inner padding; .tv-shell = content area only #}
+  <div class="tv-frame">
+    {% with ticker_class='tv-ticker' %}
+    {% include "_quote_ticker.html" %}
+    {% endwith %}
+    <div class="tv-shell">
+      {# .tv-fit is the post-scale layout box; .tv-scale is measured at full size then scaled #}
+      <div class="tv-fit" id="tv-fit">
+        <div class="tv-scale" id="tv-scale">
+          <header class="tv-header">
+            <h1>{% if stock %}Stock at {{ bar_name }}{% elif theme %}{{ theme.name }}{% elif theme_index %}Themes at {{ bar_name }}{% else %}{{ bar_name }}{% endif %}</h1>
+            <p class="tv-sub">{% if stock %}On hand and out{% elif theme %}{{ theme.description or 'What we can make in this theme' }}{% elif theme_index %}Pick a board for the night{% else %}What we can make right now{% endif %}</p>
+          </header>
+
+          {% if stock %}
+          {% include "tv_stock.html" %}
+          {% elif theme_index %}
+          {% include "tv_theme_index.html" %}
+          {% else %}
+          {% include "tv_menu.html" %}
+          {% endif %}
+
+          <footer class="tv-footer">
+            <span>Scan the codes · filter &amp; recipes on your phone</span>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Fixed outside the scale transform so it stays easy to tap #}
+  <div class="tv-switch-stack">
+    {% if not stock %}
+    <a class="tv-switch" href="{{ url_for('display_stock') }}" title="Switch to the stock board">
+      <svg class="tv-switch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/>
+      </svg>
+      <span class="tv-switch-label">Stock</span>
+    </a>
+    {% endif %}
+    {% if theme or theme_index or stock %}
+    <a class="tv-switch" href="{{ url_for('display') }}" title="Switch to the full TV menu">
+      <svg class="tv-switch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
+      </svg>
+      <span class="tv-switch-label">Main</span>
+    </a>
+    {% endif %}
+    {% if not theme_index %}
+    <a class="tv-switch" href="{{ url_for('display_theme_index') }}" title="Switch to theme boards">
+      <svg class="tv-switch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 3h7v2h-7v-2zm0-4h7v2h-7V12z"/>
+      </svg>
+      <span class="tv-switch-label">Themes</span>
+    </a>
+    {% endif %}
+    <a class="tv-switch tv-switch-recipes"
+       href="{% if theme %}{{ url_for('bar_theme', slug=theme.slug) }}{% else %}{{ url_for('bar') }}{% endif %}"
+       title="Open the recipes menu">
+      <svg class="tv-switch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M5 3h14l-6.2 9.3V17h3v2H8.2v-2h3v-4.7L5 3zm3.7 2 3.3 5 3.3-5H8.7z"/>
+      </svg>
+      <span class="tv-switch-label">Recipes</span>
+    </a>
+  </div>
+
+  {# Fixed outside the scale transform so codes stay large enough to scan #}
+  {% if wifi_ready %}
+  <aside class="tv-qr tv-qr-left" aria-label="Join Wi‑Fi">
+    <div class="tv-qr-item">
+      <span class="qr-mark-wrap">
+        <img
+          class="tv-qr-img"
+          src="{{ url_for('join_qr_wifi') }}"
+          alt="QR code to join Wi‑Fi{% if wifi_ssid %} {{ wifi_ssid }}{% endif %}"
+          width="120"
+          height="120"
+        >
+        <span class="qr-mark" aria-hidden="true">1</span>
+      </span>
+      <span class="tv-qr-label">Join Network</span>
+    </div>
+  </aside>
+  {% endif %}
+  <aside class="tv-qr tv-qr-right" aria-label="Open the phone menu">
+    <a class="tv-qr-item tv-qr-link"
+       href="{% if stock %}{{ url_for('bar_ingredients') }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug) }}{% else %}{{ url_for('bar') }}{% endif %}"
+       title="Open the phone menu">
+      <span class="qr-mark-wrap">
+        <img
+          class="tv-qr-img"
+          src="{% if stock %}{{ url_for('join_qr_bar', ingredients=1) }}{% elif theme %}{{ url_for('join_qr_bar', theme=theme.slug) }}{% else %}{{ url_for('join_qr_bar') }}{% endif %}"
+          alt="QR code to open the matching phone menu — click to open"
+          width="120"
+          height="120"
+        >
+        <span class="qr-mark" aria-hidden="true">2</span>
+      </span>
+      <span class="tv-qr-label">Phone Menu</span>
+    </a>
+  </aside>
+
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+  <aside class="tv-toast" id="tv-toast" hidden>
+    <span class="tv-toast-kicker">Just made</span>
+    <span class="tv-toast-body">
+      <img class="tv-toast-icon" id="tv-toast-icon" alt="" width="24" height="24">
+      <span class="tv-toast-name" id="tv-toast-name"></span>
+    </span>
+  </aside>
+
+  <aside class="tv-recipe-tab" id="tv-recipe-tab" hidden>
+    <header class="tv-recipe-head">
+      <img class="tv-recipe-icon" id="tv-recipe-icon" alt="" width="48" height="48">
+      <div class="tv-recipe-head-copy">
+        <p class="tv-recipe-kicker">Now making</p>
+        <h2 class="tv-recipe-name" id="tv-recipe-name"></h2>
+        <p class="tv-recipe-glass" id="tv-recipe-glass" hidden></p>
+      </div>
+    </header>
+    <section class="tv-recipe-section" aria-label="Ingredients">
+      <h3>Ingredients</h3>
+      <ul class="tv-recipe-ings" id="tv-recipe-ings"></ul>
+    </section>
+    <section class="tv-recipe-section tv-recipe-method-wrap" aria-label="Method">
+      <h3>Method</h3>
+      <div class="tv-recipe-method" id="tv-recipe-method"></div>
+    </section>
+  </aside>
+
+  <div class="tv-five-stack">
+    {% if music_artists %}
+    <a class="tv-music-tab" id="tv-music-tab"
+       href="#"
+       target="_blank"
+       rel="noopener noreferrer"
+       hidden>
+      <span class="tv-music-note" aria-hidden="true">♪</span>
+      <span class="tv-music-label">suggestion:</span>
+      <span class="tv-music-artist" id="tv-music-artist"></span>
+    </a>
+    <script type="application/json" id="tv-music-artists">{{ music_artists | tojson }}</script>
+    {% endif %}
+    <aside class="tv-five" id="tv-five" aria-label="Five o'clock clocks">
+      <div class="tv-five-cell">
+        <span class="tv-five-label">Time since 5:00</span>
+        <span class="tv-five-value" id="tv-five-since">—</span>
+      </div>
+      <div class="tv-five-rule" aria-hidden="true"></div>
+      <div class="tv-five-cell">
+        <span class="tv-five-label">Time until the next 5:00</span>
+        <span class="tv-five-value" id="tv-five-until">—</span>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      if (window.matchMedia('(max-width: 1023px)').matches) return;
+      var host = document.getElementById('tv-five');
+      var sinceEl = document.getElementById('tv-five-since');
+      var untilEl = document.getElementById('tv-five-until');
+      if (!host || !sinceEl || !untilEl) return;
+
+      function pad(n) {
+        return n < 10 ? '0' + n : String(n);
+      }
+
+      function fmt(ms) {
+        if (ms < 0) ms = 0;
+        var total = Math.floor(ms / 1000);
+        var h = Math.floor(total / 3600);
+        var m = Math.floor((total % 3600) / 60);
+        return pad(h) + ':' + pad(m);
+      }
+
+      function fiveToday(now) {
+        return new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          17, 0, 0, 0
+        );
+      }
+
+      function tick() {
+        var now = new Date();
+        var today = fiveToday(now);
+        var last;
+        var next;
+        if (now.getTime() >= today.getTime()) {
+          last = today;
+          next = new Date(today.getTime());
+          next.setDate(next.getDate() + 1);
+        } else {
+          next = today;
+          last = new Date(today.getTime());
+          last.setDate(last.getDate() - 1);
+        }
+        sinceEl.textContent = fmt(now.getTime() - last.getTime());
+        untilEl.textContent = fmt(next.getTime() - now.getTime());
+        host.classList.toggle('is-five', now.getHours() === 17);
+      }
+
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+  <script>
+    (function () {
+      if (window.matchMedia('(max-width: 1023px)').matches) return;
+      var tab = document.getElementById('tv-music-tab');
+      var nameEl = document.getElementById('tv-music-artist');
+      var dataEl = document.getElementById('tv-music-artists');
+      if (!tab || !nameEl || !dataEl) return;
+
+      var artists = [];
+      try {
+        artists = JSON.parse(dataEl.textContent || '[]');
+      } catch (e) {
+        artists = [];
+      }
+      if (!artists.length) return;
+
+      function shuffle(arr) {
+        for (var i = arr.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = arr[i];
+          arr[i] = arr[j];
+          arr[j] = t;
+        }
+      }
+
+      shuffle(artists);
+      var index = 0;
+      var SHOW_MS = 30000;
+      var HIDE_MS = 700;
+      var GAP_MS = 450;
+
+      function amazonUrl(name) {
+        return 'https://music.amazon.com/search/' + encodeURIComponent(name);
+      }
+
+      function showNext() {
+        var name = artists[index % artists.length];
+        index += 1;
+        nameEl.textContent = name;
+        tab.href = amazonUrl(name);
+        tab.hidden = false;
+        tab.classList.remove('is-out');
+        tab.setAttribute('aria-label', 'Amazon Music suggestion: ' + name);
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            tab.classList.add('is-out');
+          });
+        });
+        setTimeout(hideThenNext, SHOW_MS);
+      }
+
+      function hideThenNext() {
+        tab.classList.remove('is-out');
+        setTimeout(showNext, HIDE_MS + GAP_MS);
+      }
+
+      tab.hidden = false;
+      showNext();
+    })();
+  </script>
+  <script>
+    (function () {
+      // .tv-fit width/height come from CSS (90% × 100% of shell) — never set in px.
+      // Only scale/center .tv-scale inside that stable box.
+      var fitEl = document.getElementById('tv-fit');
+      var stage = document.getElementById('tv-scale');
+      var qrs = document.querySelectorAll('.tv-qr, .tv-five');
+      if (!fitEl || !stage) return;
+
+      function qrBottomReserve() {
+        var h = 0;
+        var viewH = window.innerHeight || document.documentElement.clientHeight;
+        qrs.forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          h = Math.max(h, Math.ceil(viewH - r.top) + 12);
+        });
+        return h;
+      }
+
+      function fit() {
+        // Clear any old inline sizes from previous JS versions
+        fitEl.style.width = '';
+        fitEl.style.height = '';
+
+        stage.style.transform = 'none';
+        stage.style.transformOrigin = 'top left';
+        stage.style.width = '100%';
+
+        // Phones: let the menu scroll instead of shrinking it to a speck.
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+          return;
+        }
+
+        var availW = Math.max(80, fitEl.clientWidth);
+        var availH = Math.max(80, fitEl.clientHeight - qrBottomReserve());
+
+        var needW = stage.scrollWidth;
+        var needH = stage.scrollHeight;
+        if (needW < 1 || needH < 1) return;
+
+        var scale = Math.min(1, availW / needW, availH / needH);
+        if (scale > 0.995) scale = 1;
+
+        var ox = (availW - needW * scale) / 2;
+        var oy = (availH - needH * scale) / 2;
+        stage.style.transform =
+          'translate(' + ox + 'px, ' + oy + 'px) scale(' + scale + ')';
+      }
+
+      fit();
+      window.addEventListener('resize', fit);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', fit);
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(fit).catch(function () {});
+      }
+      qrs.forEach(function (el) {
+        el.querySelectorAll('img').forEach(function (img) {
+          if (img.complete) return;
+          img.addEventListener('load', fit);
+        });
+      });
+      setTimeout(fit, 50);
+      setTimeout(fit, 250);
+
+      function densityFor(n) {
+        if (n <= 4) return 'roomy';
+        if (n <= 8) return 'normal';
+        return 'dense';
+      }
+
+      function menuSignature(root) {
+        if (!root) return '';
+        var parts = [root.getAttribute('data-recipe-count') || '0'];
+        root.querySelectorAll('.tv-item, .tv-stock-item').forEach(function (el) {
+          var name = el.querySelector('.drink-name');
+          var ings = el.querySelector('.drink-ings, .drink-desc');
+          var rating = el.querySelector('.rating-meta');
+          parts.push(
+            (name ? name.textContent : '') +
+            '\t' +
+            (ings ? ings.textContent : '') +
+            '\t' +
+            (rating ? rating.textContent : '')
+          );
+        });
+        return parts.join('\n');
+      }
+
+      function applyMenuHtml(html) {
+        var current = document.getElementById('tv-menu');
+        if (!current) return;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html.trim();
+        var incoming = tmp.firstElementChild;
+        if (!incoming || incoming.id !== 'tv-menu') return;
+        var subEl = document.querySelector('.tv-sub');
+        var sub = incoming.getAttribute('data-tv-sub');
+        var subChanged = false;
+        if (subEl && sub && subEl.textContent !== sub) {
+          subEl.textContent = sub;
+          subChanged = true;
+        }
+        if (menuSignature(current) === menuSignature(incoming)) {
+          if (subChanged) fit();
+          return;
+        }
+
+        var count = parseInt(incoming.getAttribute('data-recipe-count') || '0', 10);
+        current.replaceWith(incoming);
+        document.body.setAttribute('data-recipe-count', String(count));
+        document.body.setAttribute('data-density', densityFor(count));
+        incoming.querySelectorAll('img').forEach(function (img) {
+          if (!img.complete) img.addEventListener('load', fit);
+        });
+        fit();
+      }
+
+      function refreshMenu() {
+        if (document.body.classList.contains('tv-theme-index')) return;
+        var slug = document.body.getAttribute('data-theme-slug') || '';
+        var stockUrl = document.body.getAttribute('data-tv-stock-live-url') || '/tv/live/stock';
+        var menuBase = document.body.getAttribute('data-tv-menu-url') || '/tv/live/menu';
+        var menuUrl = document.body.classList.contains('tv-stock')
+          ? stockUrl
+          : slug
+            ? menuBase + (menuBase.indexOf('?') >= 0 ? '&' : '?') + 'theme=' + encodeURIComponent(slug)
+            : menuBase;
+        fetch(menuUrl, { cache: 'no-store', headers: { Accept: 'text/html' } })
+          .then(function (res) {
+            if (!res.ok) throw new Error('menu ' + res.status);
+            return res.text();
+          })
+          .then(applyMenuHtml)
+          .catch(function () {});
+      }
+
+      setInterval(refreshMenu, 30000);
+
+      function isHandheldDisplay() {
+        return window.matchMedia('(max-width: 1023px)').matches;
+      }
+
+      function pollFollow() {
+        // Phones use these pages to pick a theme; don't yank them back to
+        // whatever the TV is already showing. Same for the theme-index picker.
+        if (isHandheldDisplay()) return;
+        if (document.body.classList.contains('tv-theme-index')) return;
+        var followUrl = document.body.getAttribute('data-tv-follow-url') || '/tv/live/follow';
+        fetch(followUrl, { cache: 'no-store', headers: { Accept: 'application/json' } })
+          .then(function (res) {
+            if (!res.ok) throw new Error('follow ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.path || !data.board) return;
+            var here = document.body.getAttribute('data-tv-board') || 'main';
+            if (data.board === here) return;
+            if (data.path === window.location.pathname) return;
+            window.location.replace(data.path);
+          })
+          .catch(function () {});
+      }
+
+      if (!isHandheldDisplay()) {
+        pollFollow();
+        setInterval(pollFollow, 3000);
+      }
+
+      var toastEl = document.getElementById('tv-toast');
+      var toastName = document.getElementById('tv-toast-name');
+      var toastIcon = document.getElementById('tv-toast-icon');
+      if (isHandheldDisplay()) return;
+      var lastMadeId = null;
+      var madePrimed = false;
+      var toastTimer = null;
+      var toastHideTimer = null;
+      var TOAST_MS = 15 * 60 * 1000;
+      var TOAST_SLIDE_MS = 700;
+
+      function hideToast(then) {
+        if (!toastEl) {
+          if (then) then();
+          return;
+        }
+        if (toastTimer) {
+          clearTimeout(toastTimer);
+          toastTimer = null;
+        }
+        if (toastHideTimer) {
+          clearTimeout(toastHideTimer);
+          toastHideTimer = null;
+        }
+        var alreadyIn = toastEl.hidden || !toastEl.classList.contains('is-out');
+        toastEl.classList.remove('is-out');
+        function finish() {
+          toastEl.hidden = true;
+          toastHideTimer = null;
+          if (then) then();
+        }
+        if (alreadyIn) {
+          finish();
+          return;
+        }
+        toastHideTimer = setTimeout(finish, TOAST_SLIDE_MS);
+      }
+
+      function remainingMs(data) {
+        var madeAt = Number(data && data.made_at) * 1000;
+        if (!madeAt) return TOAST_MS;
+        return TOAST_MS - (Date.now() - madeAt);
+      }
+
+      function burstConfetti() {
+        var canvas = document.getElementById('confetti-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width = window.innerWidth;
+        var h = canvas.height = window.innerHeight;
+        var cs = window.getComputedStyle(document.body);
+        var accent = (cs.getPropertyValue('--accent') || '#e8b86d').trim();
+        var accentDim = (cs.getPropertyValue('--accent-dim') || '#c49a55').trim();
+        var text = (cs.getPropertyValue('--text') || '#f0f4f8').trim();
+        var colors = [accent, accentDim, text, '#3dd68c', '#7ec8e3', '#f0f4f8'];
+        var bits = [];
+        for (var i = 0; i < 140; i++) {
+          bits.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 80,
+            y: h * 0.42,
+            vx: (Math.random() - 0.5) * 16,
+            vy: Math.random() * -14 - 4,
+            g: 0.28 + Math.random() * 0.12,
+            s: 6 + Math.random() * 8,
+            r: Math.random() * Math.PI,
+            vr: (Math.random() - 0.5) * 0.35,
+            c: colors[i % colors.length],
+          });
+        }
+        canvas.classList.add('on');
+        var frames = 0;
+        function tick() {
+          frames++;
+          ctx.clearRect(0, 0, w, h);
+          var alive = false;
+          bits.forEach(function (p) {
+            p.vy += p.g;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.r += p.vr;
+            if (p.y < h + 20) alive = true;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.r);
+            ctx.fillStyle = p.c;
+            ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+            ctx.restore();
+          });
+          if (alive && frames < 180) {
+            requestAnimationFrame(tick);
+          } else {
+            ctx.clearRect(0, 0, w, h);
+            canvas.classList.remove('on');
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+
+      function revealToast(data, withConfetti) {
+        if (!toastEl || !toastName) return;
+        toastName.textContent = data.name || '';
+        if (toastIcon) {
+          if (data.icon) {
+            toastIcon.src = data.icon;
+            toastIcon.hidden = false;
+          } else {
+            toastIcon.removeAttribute('src');
+            toastIcon.hidden = true;
+          }
+        }
+        toastEl.hidden = false;
+        toastEl.classList.remove('is-out');
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            toastEl.classList.add('is-out');
+          });
+        });
+        if (toastTimer) clearTimeout(toastTimer);
+        var left = remainingMs(data);
+        toastTimer = setTimeout(function () {
+          hideToast();
+        }, Math.max(0, left));
+        if (withConfetti) burstConfetti();
+      }
+
+      function showToast(data, withConfetti) {
+        if (!toastEl) return;
+        var visible = !toastEl.hidden && toastEl.classList.contains('is-out');
+        if (visible) {
+          hideToast(function () {
+            revealToast(data, withConfetti);
+          });
+          return;
+        }
+        revealToast(data, withConfetti);
+      }
+
+      function pollMade() {
+        var madeUrl = document.body.getAttribute('data-tv-made-url') || '/tv/live/made';
+        fetch(madeUrl, { cache: 'no-store', headers: { Accept: 'application/json' } })
+          .then(function (res) {
+            if (!res.ok) throw new Error('made ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.id) {
+              madePrimed = true;
+              hideToast();
+              lastMadeId = null;
+              return;
+            }
+            var left = remainingMs(data);
+            if (left <= 0) {
+              madePrimed = true;
+              if (data.id === lastMadeId) hideToast();
+              lastMadeId = data.id;
+              return;
+            }
+            if (!madePrimed) {
+              lastMadeId = data.id;
+              madePrimed = true;
+              showToast(data, false);
+              return;
+            }
+            if (data.id !== lastMadeId) {
+              lastMadeId = data.id;
+              showToast(data, true);
+            }
+          })
+          .catch(function () {});
+      }
+
+      pollMade();
+      setInterval(pollMade, 3000);
+    })();
+  </script>
+  <script>
+    (function () {
+      if (window.matchMedia('(max-width: 1023px)').matches) return;
+      var tab = document.getElementById('tv-recipe-tab');
+      var nameEl = document.getElementById('tv-recipe-name');
+      var iconEl = document.getElementById('tv-recipe-icon');
+      var glassEl = document.getElementById('tv-recipe-glass');
+      var ingsEl = document.getElementById('tv-recipe-ings');
+      var methodEl = document.getElementById('tv-recipe-method');
+      if (!tab || !nameEl || !ingsEl || !methodEl) return;
+
+      function placeTab() {
+        var ticker = document.querySelector('.tv-ticker');
+        var topPx;
+        if (ticker) {
+          topPx = Math.round(ticker.getBoundingClientRect().bottom + 8);
+        } else {
+          var frame = document.querySelector('.tv-frame');
+          topPx = frame
+            ? Math.round(frame.getBoundingClientRect().top + 8)
+            : 8;
+        }
+        document.documentElement.style.setProperty('--tv-recipe-top', topPx + 'px');
+      }
+
+      placeTab();
+      window.addEventListener('resize', placeTab);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', placeTab);
+      }
+
+      var lastShowId = null;
+      var slideTimer = null;
+      var SLIDE_MS = 700;
+
+      function fillTab(data) {
+        nameEl.textContent = data.name || '';
+        if (iconEl) {
+          if (data.icon) {
+            iconEl.src = data.icon;
+            iconEl.hidden = false;
+          } else {
+            iconEl.removeAttribute('src');
+            iconEl.hidden = true;
+          }
+        }
+        if (glassEl) {
+          if (data.glassware) {
+            glassEl.textContent = data.glassware;
+            glassEl.hidden = false;
+          } else {
+            glassEl.textContent = '';
+            glassEl.hidden = true;
+          }
+        }
+        ingsEl.textContent = '';
+        (data.ingredients || []).forEach(function (line) {
+          var li = document.createElement('li');
+          if (!line.necessary) li.classList.add('optional');
+          if (line.substitute_name && !line.in_filter) {
+            li.classList.add('sub');
+          } else if (!line.in_filter) {
+            li.classList.add('out');
+          }
+          var measure = document.createElement('span');
+          measure.className = 'tv-recipe-measure';
+          measure.textContent = line.measure || '';
+          var name = document.createElement('span');
+          name.className = 'tv-recipe-ing-name';
+          name.textContent = line.name || '';
+          li.appendChild(measure);
+          li.appendChild(name);
+          var badges = document.createElement('span');
+          badges.className = 'tv-recipe-ing-badges';
+          if (!line.necessary) {
+            var opt = document.createElement('span');
+            opt.className = 'badge';
+            opt.textContent = 'optional';
+            badges.appendChild(opt);
+          }
+          if (line.substitute_name && !line.in_filter) {
+            var sub = document.createElement('span');
+            sub.className = 'badge sub-badge';
+            sub.textContent = 'use ' + line.substitute_name;
+            badges.appendChild(sub);
+          } else if (!line.in_filter) {
+            var out = document.createElement('span');
+            out.className = 'badge out-badge';
+            out.textContent = 'out';
+            badges.appendChild(out);
+          }
+          if (badges.childNodes.length) li.appendChild(badges);
+          ingsEl.appendChild(li);
+        });
+        methodEl.textContent = data.instructions
+          ? data.instructions
+          : 'No method yet.';
+      }
+
+      function hideTab(then) {
+        if (slideTimer) {
+          clearTimeout(slideTimer);
+          slideTimer = null;
+        }
+        var alreadyIn = tab.hidden || !tab.classList.contains('is-out');
+        tab.classList.remove('is-out');
+        function finish() {
+          tab.hidden = true;
+          slideTimer = null;
+          if (then) then();
+        }
+        if (alreadyIn) {
+          finish();
+          return;
+        }
+        slideTimer = setTimeout(finish, SLIDE_MS);
+      }
+
+      function revealTab(data) {
+        placeTab();
+        fillTab(data);
+        tab.hidden = false;
+        tab.classList.remove('is-out');
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            tab.classList.add('is-out');
+          });
+        });
+      }
+
+      function showTab(data) {
+        var visible = !tab.hidden && tab.classList.contains('is-out');
+        if (visible) {
+          hideTab(function () {
+            revealTab(data);
+          });
+          return;
+        }
+        revealTab(data);
+      }
+
+      function pollShow() {
+        var showUrl = document.body.getAttribute('data-tv-show-url') || '/tv/live/show';
+        fetch(showUrl, { cache: 'no-store', headers: { Accept: 'application/json' } })
+          .then(function (res) {
+            if (!res.ok) throw new Error('show ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.id) {
+              lastShowId = null;
+              hideTab();
+              return;
+            }
+            if (data.id === lastShowId) return;
+            lastShowId = data.id;
+            showTab(data);
+          })
+          .catch(function () {});
+      }
+
+      pollShow();
+      setInterval(pollShow, 3000);
+    })();
+  </script>
+</body>
+</html>

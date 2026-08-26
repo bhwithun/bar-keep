@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- V-shaped martini glass -->
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+        d="M14 14h36L32 36 14 14z"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round"
+        d="M32 36v16"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round"
+        d="M22 54h20"/>
+  <!-- olive -->
+  <circle cx="32" cy="26" r="2.5" fill="#f0f4f8" opacity="0.75"/>
+  <path stroke="#f0f4f8" stroke-width="1.4" stroke-linecap="round" opacity="0.6"
+        d="M32 23.5V18"/>
+</svg>

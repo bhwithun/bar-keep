@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- Silver julep cup: tapered beaker, no handle, mint sprig -->
+  <ellipse cx="32" cy="16" rx="16" ry="2.6" stroke="#f0f4f8" stroke-width="2"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+        d="M16 16l3.5 32a10 10 0 0 0 10 8h5a10 10 0 0 0 10-8L48 16"/>
+  <!-- decorative bands -->
+  <path stroke="#f0f4f8" stroke-width="1.5" opacity="0.5"
+        d="M18.5 26h27M20 36h24"/>
+  <!-- mint sprig -->
+  <path stroke="#f0f4f8" stroke-width="1.6" stroke-linecap="round"
+        d="M32 16V7"/>
+  <path stroke="#f0f4f8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+        d="M32 11c-3-1-5 1-5 3 2-1 4 0 5-2z"/>
+  <path stroke="#f0f4f8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+        d="M32 9c3-1 5 1 5 3-2-1-4 0-5-2z"/>
+</svg>

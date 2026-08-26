@@ -1,0 +1,112 @@
+{# Global nav + breadcrumbs. Set nav_current and breadcrumbs before including. #}
+{% set _cur = nav_current|default('') %}
+{% set _bar = _cur in ['bar', 'bar-menu', 'bar-theme', 'bar-recent', 'bar-top', 'onhand'] %}
+{% set _menu = _cur in ['tv', 'tv-themes', 'tv-theme', 'stock'] %}
+{% set _admin = _cur in ['admin', 'admin-recipes', 'admin-inventory', 'admin-substitutes', 'admin-settings'] %}
+<div class="site-chrome">
+  <nav class="site-toolbar" aria-label="Site">
+    <div class="site-drop">
+      <button type="button" class="site-tool site-drop-btn{% if _bar %} active{% endif %}"
+              aria-expanded="false" aria-haspopup="true">Guest</button>
+      <div class="site-drop-menu" role="menu">
+        <a role="menuitem" href="{{ url_for('bar') }}"{% if _cur == 'bar' %} class="active" aria-current="page"{% endif %}>Themed Menus</a>
+        <a role="menuitem" href="{{ url_for('bar_menu') }}"{% if _cur == 'bar-menu' %} class="active" aria-current="page"{% endif %}>Full Menu</a>
+        <a role="menuitem" href="{{ url_for('bar_recent') }}"{% if _cur == 'bar-recent' %} class="active" aria-current="page"{% endif %}>Most Recent</a>
+        <a role="menuitem" href="{{ url_for('bar_top') }}"{% if _cur == 'bar-top' %} class="active" aria-current="page"{% endif %}>Top Ten</a>
+        <a role="menuitem" href="{{ url_for('bar_ingredients') }}"{% if _cur == 'onhand' %} class="active" aria-current="page"{% endif %}>What's On Hand</a>
+      </div>
+    </div>
+    <div class="site-drop">
+      <button type="button" class="site-tool site-drop-btn{% if _menu %} active{% endif %}"
+              aria-expanded="false" aria-haspopup="true">TV</button>
+      <div class="site-drop-menu" role="menu">
+        <a role="menuitem" href="{{ url_for('display') }}"{% if _cur == 'tv' %} class="active" aria-current="page"{% endif %}>Main</a>
+        <a role="menuitem" href="{{ url_for('display_theme_index') }}"{% if _cur in ['tv-themes', 'tv-theme'] %} class="active" aria-current="page"{% endif %}>Theme boards</a>
+        <a role="menuitem" href="{{ url_for('display_stock') }}"{% if _cur == 'stock' %} class="active" aria-current="page"{% endif %}>Stock</a>
+      </div>
+    </div>
+    <div class="site-drop">
+      <button type="button" class="site-tool site-drop-btn{% if _admin %} active{% endif %}"
+              aria-expanded="false" aria-haspopup="true">Admin</button>
+      <div class="site-drop-menu" role="menu">
+        <a role="menuitem" href="{{ url_for('admin') }}"{% if _cur == 'admin' %} class="active" aria-current="page"{% endif %}>Overview</a>
+        <a role="menuitem" href="{{ url_for('admin_recipes') }}"{% if _cur == 'admin-recipes' %} class="active" aria-current="page"{% endif %}>Recipes</a>
+        <a role="menuitem" href="{{ url_for('admin_inventory') }}"{% if _cur == 'admin-inventory' %} class="active" aria-current="page"{% endif %}>Inventory</a>
+        <a role="menuitem" href="{{ url_for('admin_substitutes') }}"{% if _cur == 'admin-substitutes' %} class="active" aria-current="page"{% endif %}>Substitutes</a>
+        <a role="menuitem" href="{{ url_for('admin_settings') }}"{% if _cur == 'admin-settings' %} class="active" aria-current="page"{% endif %}>Settings</a>
+      </div>
+    </div>
+  </nav>
+  {% if breadcrumbs %}
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol>
+      {% for c in breadcrumbs %}
+      <li>
+        {% if not loop.last and c.url %}
+        <a href="{{ c.url }}">{{ c.label }}</a>
+        <span class="crumb-sep" aria-hidden="true">/</span>
+        {% else %}
+        <span aria-current="page">{{ c.label }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+  {% endif %}
+  <script>
+    (function () {
+      var nav = document.currentScript && document.currentScript.parentElement
+        ? document.currentScript.parentElement.querySelector('.site-toolbar')
+        : document.querySelector('.site-toolbar');
+      if (!nav || nav.getAttribute('data-ready')) return;
+      nav.setAttribute('data-ready', '1');
+
+      var tapSrc = {{ url_for('static', filename='tap.wav') | tojson }};
+      var tapAudio = new Audio(tapSrc);
+      tapAudio.preload = 'auto';
+      tapAudio.volume = 0.55;
+
+      function playTap() {
+        try {
+          var a = tapAudio.cloneNode();
+          a.volume = tapAudio.volume;
+          var p = a.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (err) {}
+      }
+
+      nav.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('.site-drop-btn, .site-drop-menu a')) playTap();
+      });
+
+      function closeAll() {
+        nav.querySelectorAll('.site-drop.open').forEach(function (d) {
+          d.classList.remove('open');
+          var b = d.querySelector('.site-drop-btn');
+          if (b) b.setAttribute('aria-expanded', 'false');
+        });
+      }
+
+      nav.querySelectorAll('.site-drop-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var drop = btn.closest('.site-drop');
+          var was = drop.classList.contains('open');
+          closeAll();
+          if (!was) {
+            drop.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+      nav.querySelectorAll('.site-drop-menu').forEach(function (menu) {
+        menu.addEventListener('click', function (e) { e.stopPropagation(); });
+      });
+      document.addEventListener('click', closeAll);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAll();
+      });
+    })();
+  </script>
+</div>

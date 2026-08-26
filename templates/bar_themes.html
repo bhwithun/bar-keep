@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Themes · Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bar bar-themes">
+  <div class="bar-sticky">
+    {% set nav_current = 'bar' %}
+    {% set breadcrumbs = [
+      {"label": "Themes", "url": url_for("bar")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="bar-header">
+      <div>
+        <h1>What’s the night?</h1>
+        <p class="muted">
+          Pick a theme — only drinks you can make right now.
+          {{ on_hand_count }}/{{ ingredient_count }} ingredients on hand
+        </p>
+      </div>
+    </header>
+  </div>
+
+  <div class="theme-grid">
+    {% for t in themes %}
+    <a class="theme-card themed{% if t.slug == 'featured' %} featured-theme-card{% endif %}{% if t.makeable_count == 0 %} empty{% endif %}"
+       href="{{ url_for('bar_theme', slug=t.slug) }}"
+       {% if t.palette_style %}style="{{ t.palette_style }}"{% endif %}>
+      <div class="theme-card-top">
+        <span class="theme-card-icon" aria-hidden="true">
+          {% include ['theme_icons/' ~ t.slug ~ '.svg', 'theme_icons/_default.svg'] %}
+        </span>
+        <h3>{{ t.name }}</h3>
+      </div>
+      {% if t.description %}
+      <p class="theme-card-desc">{{ t.description }}</p>
+      {% endif %}
+      <p class="theme-card-count">
+        {% if t.makeable_count %}
+        {{ t.makeable_count }} drink{{ 's' if t.makeable_count != 1 else '' }}
+        {% else %}
+        none on hand
+        {% endif %}
+      </p>
+    </a>
+    {% endfor %}
+  </div>
+
+  <p class="footer-links">
+    <a href="{{ url_for('bar_menu') }}">Full menu</a>
+    ·
+    <a href="{{ url_for('bar_recent') }}">Most recent</a>
+    ·
+    <a href="{{ url_for('bar_top') }}">Top ten</a>
+    ·
+    <a href="{{ url_for('bar_ingredients') }}">What’s on hand?</a>
+  </p>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<div id="tv-menu" data-recipe-count="{{ recipe_count }}">
+  <main class="tv-theme-catalog">
+    {% if featured_tile %}
+    <div class="tv-theme-grid tv-featured-grid">
+      <a class="tv-theme-tile themed featured-theme-tile{% if featured_tile.makeable_count == 0 %} empty{% endif %}"
+         href="{{ url_for('display_featured') }}"
+         {% if featured_tile.palette_style %}style="{{ featured_tile.palette_style }}"{% endif %}>
+        <span class="tv-theme-tile-name">Featured Ingredients</span>
+        <span class="tv-theme-tile-count">
+          {% if featured_tile.makeable_count %}{{ featured_tile.makeable_count }}{% else %}—{% endif %}
+        </span>
+      </a>
+    </div>
+    {% endif %}
+    <div class="tv-theme-grid">
+      {% for t in themes %}
+      <a class="tv-theme-tile themed{% if t.makeable_count == 0 %} empty{% endif %}"
+         href="{{ url_for('display_theme', slug=t.slug) }}"
+         {% if t.palette_style %}style="{{ t.palette_style }}"{% endif %}>
+        <span class="tv-theme-tile-name">{{ t.name }}</span>
+        <span class="tv-theme-tile-count">
+          {% if t.makeable_count %}{{ t.makeable_count }}{% else %}—{% endif %}
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </main>
+</div>

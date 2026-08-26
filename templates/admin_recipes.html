@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipes · Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin admin-recipes-page">
+  <div class="admin-sticky">
+    {% set nav_current = 'admin-recipes' %}
+    {% set breadcrumbs = [
+      {"label": "Admin", "url": url_for("admin")},
+      {"label": "Recipes", "url": url_for("admin_recipes")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="admin-header">
+      <div>
+        <h1>Recipes</h1>
+        <p class="muted">
+          <span id="admin-recipe-shown">{{ recipes|length }}</span> of
+          {{ recipes|length }} shown
+        </p>
+      </div>
+      <nav class="admin-nav">
+        <a class="btn primary" href="{{ url_for('admin_recipe_new') }}">New recipe</a>
+      </nav>
+    </header>
+
+    {% if recipes %}
+    <div class="name-filter">
+      <label class="visually-hidden" for="admin-recipe-filter">Filter recipes</label>
+      <div class="name-filter-row">
+        <input
+          id="admin-recipe-filter"
+          type="search"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="Filter by name, category, tag…"
+        >
+        <button type="button" class="btn ghost" id="admin-recipe-filter-clear" hidden>Clear</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <section class="panel">
+    {% if not recipes %}
+    <p class="muted">No recipes yet. <a href="{{ url_for('admin_recipe_new') }}">Add one</a>.</p>
+    {% else %}
+    <div class="drink-table" id="admin-recipe-list">
+      {% for r in recipes %}
+      <article class="drink-card {% if not r.published %}unavailable{% endif %}"
+               data-search="{{ (r.name ~ ' ' ~ (r.category or '') ~ ' ' ~ (r.glassware or '') ~ ' ' ~ (r.tags or '') ~ ' ' ~ (r.description or '')) | e }}">
+        <div class="recipe-list-main">
+          <h3><a href="{{ url_for('admin_recipe_edit', recipe_id=r.id) }}">{{ r.name }}</a></h3>
+          <p class="muted">
+            {{ r.category }}
+            {% if r.glassware %} · {{ r.glassware }}{% endif %}
+            · sort {{ r.sort_order }}
+            {% if not r.published %} · <strong>hidden</strong>{% endif %}
+
+          </p>
+          {% if r.description %}
+          <p class="recipe-card-desc">{{ r.description }}</p>
+          {% endif %}
+          {% set rat = ratings.get(r.id) %}
+          <p class="rating-line admin-rating-line">
+            {% if rat %}
+            {% for i in range(1, 6) %}
+            <span class="star {% if i <= rat.avg|round|int %}filled{% endif %}" aria-hidden="true">★</span>
+            {% endfor %}
+            <span class="rating-meta">{{ '%.1f'|format(rat.avg) }} · {{ rat.count }} rating{{ 's' if rat.count != 1 else '' }}</span>
+            {% else %}
+            <span class="muted">No ratings</span>
+            {% endif %}
+          </p>
+          {% set missing = missing_by_recipe.get(r.id, []) %}
+          {% if missing %}
+          <p class="recipe-missing">
+            <span class="recipe-missing-label">Missing:</span>
+            {% for m in missing %}
+            <span class="recipe-missing-item{% if not m.necessary %} optional{% endif %}{% if m.substitute %} covered{% endif %}">
+              {% if m.substitute %}{{ m.name }} <em>(use {{ m.substitute }})</em>
+              {% else %}{{ m.name }}{% if not m.necessary %} <em>(optional)</em>{% endif %}
+              {% endif %}
+            </span>{% if not loop.last %}<span class="inventory-sep"> · </span>{% endif %}
+            {% endfor %}
+          </p>
+          {% endif %}
+        </div>
+        <div class="card-side">
+          <a class="btn primary" href="{{ url_for('recipe_detail', recipe_id=r.id) }}">View</a>
+          <a class="btn ghost" href="{{ url_for('admin_recipe_edit', recipe_id=r.id) }}">Edit</a>
+          {% if ratings.get(r.id) %}
+          <form method="post" action="{{ url_for('clear_recipe_ratings', recipe_id=r.id) }}"
+                onsubmit="return confirm('Delete all ratings for {{ r.name }}?');">
+            <button type="submit" class="btn ghost">Clear ratings</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('toggle_recipe', recipe_id=r.id) }}">
+            <button type="submit" class="btn ghost">
+              {% if r.published %}Hide{% else %}Publish{% endif %}
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('delete_recipe', recipe_id=r.id) }}"
+                onsubmit="return confirm('Delete {{ r.name }}?');">
+            <button type="submit" class="btn danger">Delete</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <p class="muted empty-panel" id="admin-recipe-empty" hidden>No recipes match that filter.</p>
+    {% endif %}
+  </section>
+
+  {% if recipes %}
+  <script>
+    (function () {
+      var input = document.getElementById('admin-recipe-filter');
+      var clearBtn = document.getElementById('admin-recipe-filter-clear');
+      var shownEl = document.getElementById('admin-recipe-shown');
+      var emptyEl = document.getElementById('admin-recipe-empty');
+      var cards = Array.prototype.slice.call(
+        document.querySelectorAll('#admin-recipe-list .drink-card')
+      );
+
+      function normalize(s) {
+        return String(s || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      }
+
+      function matches(query, hay) {
+        var q = normalize(query);
+        if (!q) return true;
+        hay = normalize(hay);
+        var tokens = q.split(' ').filter(Boolean);
+        for (var i = 0; i < tokens.length; i++) {
+          if (hay.indexOf(tokens[i]) === -1) return false;
+        }
+        return true;
+      }
+
+      function apply() {
+        var q = input.value;
+        var n = 0;
+        cards.forEach(function (card) {
+          var ok = matches(q, card.getAttribute('data-search') || '');
+          card.hidden = !ok;
+          if (ok) n++;
+        });
+        if (shownEl) shownEl.textContent = String(n);
+        if (emptyEl) emptyEl.hidden = n !== 0;
+        if (clearBtn) clearBtn.hidden = !normalize(q);
+      }
+
+      input.addEventListener('input', apply);
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          input.value = '';
+          apply();
+          input.focus();
+        });
+      }
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

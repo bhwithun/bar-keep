@@ -1,0 +1,11 @@
+{% if ticker_quotes %}
+<div class="{{ ticker_class|default('tv-ticker') }}"
+     data-quote-ticker
+     data-quote-source="quote-ticker-data"
+     data-item-class="tv-ticker-item"
+     aria-hidden="true">
+  <div class="tv-ticker-track" data-quote-track></div>
+</div>
+<script type="application/json" id="quote-ticker-data">{{ ticker_quotes | tojson }}</script>
+<script src="{{ url_for('static', filename='quote-ticker.js') }}" defer></script>
+{% endif %}

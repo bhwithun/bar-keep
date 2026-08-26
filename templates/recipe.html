@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ recipe.name }} · Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bar recipe-page{% if theme %} bar-theme{% endif %}"
+      data-return-url="{{ return_url }}"
+      data-has-rating="{{ '1' if my_stars else '0' }}"
+      {% if palette_style %}style="{{ palette_style }}"{% endif %}>
+  {% set featured_names = featured_names|default([]) %}
+  {% set list_kind = list_kind|default('') %}
+  {% set list_title = list_title|default('') %}
+  {% set list_endpoint = list_endpoint|default(none) %}
+  {% include "_site_chrome.html" %}
+  <header class="recipe-identity">
+    <div class="recipe-identity-copy">
+      <h1>{{ recipe.name }}</h1>
+      <p class="muted recipe-identity-meta">
+        {{ recipe.category }}
+        {% if recipe.glassware %} · {{ recipe.glassware }}{% endif %}
+      </p>
+      <form class="star-rate" method="post" action="{% if list_kind %}{{ url_for('rate_recipe', recipe_id=recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('rate_recipe', recipe_id=recipe.id, theme=theme.slug) }}{% else %}{{ url_for('rate_recipe', recipe_id=recipe.id) }}{% endif %}">
+        <p class="rating-prompt visually-hidden" id="rating-prompt">
+          {% if my_stars %}You rated this {{ my_stars }}/5 · tap to change{% else %}Tap a star to rate{% endif %}
+        </p>
+        <div class="star-buttons" role="group" aria-label="Rate from 1 to 5 stars">
+          {% for i in range(1, 6) %}
+          <button type="submit" name="stars" value="{{ i }}"
+                  class="star-btn {% if my_stars and i <= my_stars %}chosen{% endif %}"
+                  aria-label="{{ i }} star{{ 's' if i != 1 else '' }}"
+                  aria-pressed="{{ 'true' if my_stars == i else 'false' }}">★</button>
+          {% endfor %}
+        </div>
+      </form>
+      {% if recipe.description %}
+      <p class="recipe-lead">{{ recipe.description }}</p>
+      {% endif %}
+    </div>
+    <div class="recipe-vessel">
+      <img
+        class="vessel-thumb vessel-thumb-hero"
+        src="{{ glassware_icon_url(recipe.glassware, recipe.category) }}"
+        alt="{% if recipe.glassware %}{{ recipe.glassware }}{% else %}Serving vessel{% endif %}"
+        width="72"
+        height="72"
+      >
+      <form class="show-on-tv-form" method="post"
+            action="{% if list_kind %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id, theme=theme.slug) }}{% else %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id) }}{% endif %}">
+        <button type="submit"
+                class="btn sm ghost show-on-tv{% if tv_showing %} is-live{% endif %}"
+                id="show-on-tv"
+                aria-pressed="{{ 'true' if tv_showing else 'false' }}">
+          {% if tv_showing %}Showing on TV{% else %}Show on TV{% endif %}
+        </button>
+      </form>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="recipe-workspace">
+    <section class="recipe-checklist" aria-label="Ingredients" id="ingredient-checklist-wrap"
+             data-made-url="{{ url_for('mark_recipe_made', recipe_id=recipe.id) }}">
+      <h2>Ingredients</h2>
+      <p class="muted ing-check-hint">Tick each as you add it — nothing is saved.</p>
+      <div class="ing-tiles" id="ingredient-checklist">
+        {% for line in lines %}
+        {% set using_sub = line.substitute_name and not line.in_filter %}
+        <label class="ing-tile {% if not line.necessary %}optional{% endif %} {% if using_sub %}sub{% elif not line.in_filter %}out{% endif %}">
+          <input type="checkbox" class="ing-check">
+          <span class="ing-tile-tick" aria-hidden="true"></span>
+          <span class="ing-tile-body">
+            <span class="ing-tile-name{% if line.ingredient_name in featured_names %} featured-ing{% endif %}">{{ line.ingredient_name }}</span>
+            {% if line.measure %}
+            <span class="ing-tile-measure">{{ line.measure }}</span>
+            {% endif %}
+            <span class="ing-tile-badges">
+              {% if not line.necessary %}<span class="badge">optional</span>{% endif %}
+              {% if using_sub %}
+              <span class="badge sub-badge">use {{ line.substitute_name }}</span>
+              {% elif not line.in_filter %}
+              <span class="badge out-badge">currently out</span>
+              {% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="recipe-method" aria-label="Method">
+      <h2>Method</h2>
+      {% if recipe.instructions %}
+      <div class="prose">{{ recipe.instructions }}</div>
+      {% else %}
+      <p class="muted">No method yet.</p>
+      {% endif %}
+      {% if recipe.notes %}
+      <h2>Notes</h2>
+      <div class="prose">{{ recipe.notes }}</div>
+      {% endif %}
+    </aside>
+  </div>
+
+  <div class="made-rate-overlay" id="made-rate-overlay" hidden>
+    <div class="made-rate-card" role="dialog" aria-modal="true" aria-labelledby="made-rate-title">
+      <h2 id="made-rate-title">How was it?</h2>
+      <p class="muted">Rate {{ recipe.name }}, or skip.</p>
+      <div class="star-buttons" id="made-rate-stars" role="group" aria-label="Rate from 1 to 5 stars">
+        {% for i in range(1, 6) %}
+        <button type="button" class="star-btn" data-stars="{{ i }}"
+                aria-label="{{ i }} star{{ 's' if i != 1 else '' }}">★</button>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn ghost" id="made-rate-skip">Skip</button>
+    </div>
+  </div>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+  <audio id="cha-ching" preload="auto" src="{{ url_for('static', filename='cha-ching.wav') }}"></audio>
+  <audio id="ing-pop" preload="auto" src="{{ url_for('static', filename='pop.wav') }}"></audio>
+  <audio id="tada" preload="auto" src="{{ url_for('static', filename='tada.wav') }}"></audio>
+  <script>
+    (function () {
+      var rateForm = document.querySelector('.star-rate');
+      if (rateForm) {
+        var tadaEl = document.getElementById('tada');
+        function playTada() {
+          if (!tadaEl) return;
+          try {
+            tadaEl.pause();
+            tadaEl.currentTime = 0;
+            tadaEl.volume = 0.75;
+            var p = tadaEl.play();
+            if (p && p.catch) p.catch(function () {});
+          } catch (err) {}
+        }
+
+        function paintStars(container, filled) {
+          if (!container) return;
+          var stars = container.querySelectorAll('.star, .star-btn');
+          for (var i = 0; i < stars.length; i++) {
+            var on = i < filled;
+            stars[i].classList.toggle('filled', on);
+            stars[i].classList.toggle('chosen', on);
+            if (stars[i].tagName === 'BUTTON') {
+              stars[i].setAttribute('aria-pressed', i + 1 === filled ? 'true' : 'false');
+            }
+          }
+        }
+
+        rateForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+        });
+        rateForm.querySelectorAll('.star-btn').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var stars = parseInt(btn.value, 10);
+            if (!stars) return;
+            playTada();
+            var fd = new FormData();
+            fd.append('stars', String(stars));
+            fetch(rateForm.action, {
+              method: 'POST',
+              body: fd,
+              headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'fetch',
+              },
+              credentials: 'same-origin',
+            })
+              .then(function (res) {
+                if (!res.ok) throw new Error('rate failed');
+                return res.json();
+              })
+              .then(function (data) {
+                if (!data.ok) throw new Error(data.error || 'rate failed');
+                paintStars(rateForm.querySelector('.star-buttons'), data.stars);
+                var prompt = document.getElementById('rating-prompt');
+                if (prompt) {
+                  prompt.textContent = 'You rated this ' + data.stars + '/5 · tap to change';
+                }
+              })
+              .catch(function () {
+                var fallback = document.createElement('input');
+                fallback.type = 'hidden';
+                fallback.name = 'stars';
+                fallback.value = String(stars);
+                rateForm.appendChild(fallback);
+                HTMLFormElement.prototype.submit.call(rateForm);
+              });
+          });
+        });
+      }
+
+      var showForm = document.querySelector('.show-on-tv-form');
+      var showBtn = document.getElementById('show-on-tv');
+      if (showForm && showBtn) {
+        function paintShowBtn(showing) {
+          showBtn.textContent = showing ? 'Showing on TV' : 'Show on TV';
+          showBtn.classList.toggle('is-live', !!showing);
+          showBtn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+        }
+
+        showForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          if (showBtn.disabled) return;
+          var hiding = showBtn.classList.contains('is-live');
+          showBtn.disabled = true;
+          var fd = new FormData();
+          fd.append('intent', hiding ? 'hide' : 'show');
+          fetch(showForm.action, {
+            method: 'POST',
+            body: fd,
+            headers: {
+              Accept: 'application/json',
+              'X-Requested-With': 'fetch',
+            },
+            credentials: 'same-origin',
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('show failed');
+              return res.json();
+            })
+            .then(function (data) {
+              if (!data.ok) throw new Error(data.error || 'show failed');
+              paintShowBtn(!!data.showing);
+            })
+            .catch(function () {
+              var fallback = document.createElement('input');
+              fallback.type = 'hidden';
+              fallback.name = 'intent';
+              fallback.value = hiding ? 'hide' : 'show';
+              showForm.appendChild(fallback);
+              HTMLFormElement.prototype.submit.call(showForm);
+            })
+            .finally(function () {
+              showBtn.disabled = false;
+            });
+        });
+      }
+
+      var list = document.getElementById('ingredient-checklist');
+      if (!list) return;
+
+      var boxes = list.querySelectorAll('.ing-check');
+      var celebrated = false;
+
+      function allChecked() {
+        if (!boxes.length) return false;
+        for (var i = 0; i < boxes.length; i++) {
+          if (!boxes[i].checked) return false;
+        }
+        return true;
+      }
+
+      function playPop() {
+        var a = document.getElementById('ing-pop');
+        if (!a) return;
+        try {
+          var clone = a.cloneNode();
+          clone.volume = 0.6;
+          var p = clone.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+
+      list.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('ing-check')) {
+          playPop();
+        }
+        if (allChecked()) {
+          if (!celebrated) {
+            celebrated = true;
+            playChaChing();
+            burstConfetti();
+            var wrap = document.getElementById('ingredient-checklist-wrap');
+            var madeUrl = wrap && wrap.getAttribute('data-made-url');
+            if (madeUrl) {
+              fetch(madeUrl, {
+                method: 'POST',
+                headers: {
+                  Accept: 'application/json',
+                  'X-Requested-With': 'fetch',
+                },
+                credentials: 'same-origin',
+              }).catch(function () {});
+            }
+            afterMade();
+          }
+        } else {
+          celebrated = false;
+        }
+      });
+
+      function returnToMenu() {
+        var url = document.body.getAttribute('data-return-url') || {{ url_for('bar') | tojson }};
+        window.location.href = url;
+      }
+
+      function afterMade() {
+        if (document.body.getAttribute('data-has-rating') === '1') {
+          setTimeout(returnToMenu, 1400);
+          return;
+        }
+        setTimeout(function () {
+          var overlay = document.getElementById('made-rate-overlay');
+          if (overlay) overlay.hidden = false;
+        }, 700);
+      }
+
+      var rateStars = document.getElementById('made-rate-stars');
+      var rateSkip = document.getElementById('made-rate-skip');
+      if (rateStars && rateForm) {
+        rateStars.querySelectorAll('.star-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var stars = parseInt(btn.getAttribute('data-stars'), 10);
+            if (!stars) return;
+            rateStars.querySelectorAll('.star-btn').forEach(function (b) {
+              b.disabled = true;
+              b.classList.toggle('chosen', parseInt(b.getAttribute('data-stars'), 10) <= stars);
+            });
+            if (rateSkip) rateSkip.disabled = true;
+            var fd = new FormData();
+            fd.append('stars', String(stars));
+            fetch(rateForm.action, {
+              method: 'POST',
+              body: fd,
+              headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'fetch',
+              },
+              credentials: 'same-origin',
+            })
+              .finally(function () {
+                returnToMenu();
+              });
+          });
+        });
+      }
+      if (rateSkip) {
+        rateSkip.addEventListener('click', function () {
+          returnToMenu();
+        });
+      }
+
+      function playChaChing() {
+        var a = document.getElementById('cha-ching');
+        if (!a) return;
+        try {
+          a.pause();
+          a.currentTime = 0;
+          var p = a.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+
+      function burstConfetti() {
+        var canvas = document.getElementById('confetti-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width = window.innerWidth;
+        var h = canvas.height = window.innerHeight;
+        var colors = ['#e8b86d', '#3dd68c', '#f07178', '#f0f4f8', '#c49a55', '#7ec8e3'];
+        var bits = [];
+        var n = 140;
+        for (var i = 0; i < n; i++) {
+          bits.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 80,
+            y: h * 0.38,
+            vx: (Math.random() - 0.5) * 16,
+            vy: Math.random() * -14 - 4,
+            g: 0.28 + Math.random() * 0.12,
+            s: 6 + Math.random() * 8,
+            r: Math.random() * Math.PI,
+            vr: (Math.random() - 0.5) * 0.35,
+            c: colors[i % colors.length],
+          });
+        }
+        canvas.classList.add('on');
+        var frames = 0;
+        function tick() {
+          frames++;
+          ctx.clearRect(0, 0, w, h);
+          var alive = false;
+          bits.forEach(function (p) {
+            p.vy += p.g;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.r += p.vr;
+            if (p.y < h + 20) alive = true;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.r);
+            ctx.fillStyle = p.c;
+            ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+            ctx.restore();
+          });
+          if (alive && frames < 180) {
+            requestAnimationFrame(tick);
+          } else {
+            ctx.clearRect(0, 0, w, h);
+            canvas.classList.remove('on');
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+    })();
+  </script>
+</body>
+</html>

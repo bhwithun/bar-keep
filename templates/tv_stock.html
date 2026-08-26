@@ -1,0 +1,28 @@
+<div id="tv-menu" data-recipe-count="{{ recipe_count }}">
+  <div class="tv-stock-board">
+    <section class="tv-stock-col on">
+      <h2>On hand <span>{{ on_hand|length }}</span></h2>
+      {% if on_hand %}
+      <ul>
+        {% for ing in on_hand %}
+        <li class="tv-stock-item">{{ ing.name }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="tv-stock-empty">Nothing marked on hand.</p>
+      {% endif %}
+    </section>
+    <section class="tv-stock-col out">
+      <h2>Out <span>{{ out|length }}</span></h2>
+      {% if out %}
+      <ul>
+        {% for ing in out %}
+        <li class="tv-stock-item">{{ ing.name }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="tv-stock-empty">Everything is on hand.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>

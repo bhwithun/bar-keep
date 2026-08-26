@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- Short rocks / old-fashioned glass -->
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+        d="M16 18h32l-2.5 30a7 7 0 0 1-7 6H25.5a7 7 0 0 1-7-6L16 18z"/>
+  <path stroke="#f0f4f8" stroke-width="1.6" stroke-linecap="round" opacity="0.45"
+        d="M21 30h22"/>
+  <!-- ice cubes -->
+  <rect x="24" y="34" width="9" height="9" rx="1" stroke="#f0f4f8" stroke-width="1.5" opacity="0.7"/>
+  <rect x="34" y="38" width="8" height="8" rx="1" stroke="#f0f4f8" stroke-width="1.5" opacity="0.55"/>
+  <ellipse cx="32" cy="18" rx="16" ry="2.2" stroke="#f0f4f8" stroke-width="2"/>
+</svg>

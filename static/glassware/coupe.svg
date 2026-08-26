@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- Coupe / champagne saucer -->
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+        d="M12 18c0 10 9 16 20 16s20-6 20-16"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round"
+        d="M12 18h40"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round"
+        d="M32 34v16"/>
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round"
+        d="M22 54h20"/>
+  <path stroke="#f0f4f8" stroke-width="1.5" opacity="0.4"
+        d="M18 24h28"/>
+</svg>

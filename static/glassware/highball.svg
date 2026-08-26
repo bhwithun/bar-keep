@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- Tall highball / collins-style glass -->
+  <path stroke="#f0f4f8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+        d="M18 10h28l-3.5 42a6 6 0 0 1-6 5.5H27.5a6 6 0 0 1-6-5.5L18 10z"/>
+  <path stroke="#f0f4f8" stroke-width="1.6" stroke-linecap="round" opacity="0.45"
+        d="M22 22h20M24 34h16"/>
+  <ellipse cx="32" cy="10" rx="14" ry="2.5" stroke="#f0f4f8" stroke-width="2"/>
+</svg>

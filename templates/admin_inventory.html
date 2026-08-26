@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory · Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin inventory-page">
+  <div class="admin-sticky">
+    {% set nav_current = 'admin-inventory' %}
+    {% set breadcrumbs = [
+      {"label": "Admin", "url": url_for("admin")},
+      {"label": "Inventory", "url": url_for("admin_inventory")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="admin-header">
+      <div>
+        <h1>Inventory report</h1>
+        <p class="muted">
+          {{ out_count }} to restock
+          · {{ on_hand_count }} on hand
+          · {{ total_count }} total
+        </p>
+      </div>
+      <nav class="admin-nav">
+        <button type="button" class="btn primary" onclick="window.print()">Print</button>
+      </nav>
+    </header>
+  </div>
+
+  <section class="panel inventory-out">
+    <h2>Need to buy / restock ({{ out_count }})</h2>
+    {% if out_count == 0 %}
+    <p class="muted">Everything is marked on hand. Nice.</p>
+    {% else %}
+    <p class="muted small-gap">Based on the guest ingredient filter — unchecked = treat as out of stock.</p>
+    <ul class="inventory-checklist">
+      {% for category, items in out_groups.items() %}
+      <li class="inventory-cat">{{ category }}</li>
+      {% for ing in items %}
+      <li class="inventory-item out">
+        <span class="inventory-out-mark" aria-hidden="true">✕</span>
+        <div class="inventory-item-body">
+          <span class="inventory-name">{{ ing.name }}</span>
+          {% set drinks = recipes_by_ing.get(ing.id, []) %}
+          {% if drinks %}
+          <p class="inventory-drinks">
+            <span class="inventory-used-by">Used by:</span>
+            {% for d in drinks %}
+            <a class="inventory-drink{% if not d.necessary %} optional{% endif %}"
+               href="{{ url_for('recipe_detail', recipe_id=d.id) }}">{{ d.name }}{% if not d.necessary %} <em>(optional)</em>{% endif %}</a>{% if not loop.last %}<span class="inventory-sep" aria-hidden="true">&#x2619;</span>{% endif %}
+            {% endfor %}
+          </p>
+          {% else %}
+          <p class="inventory-drinks muted">Not used by any published recipe</p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="panel inventory-in">
+    <h2>On hand ({{ on_hand_count }})</h2>
+    {% if on_hand_count == 0 %}
+    <p class="muted">Nothing marked on hand yet. Toggle items on the ingredients page.</p>
+    {% else %}
+    <div class="inventory-onhand-grid">
+      {% for category, items in on_hand_groups.items() %}
+      <div class="inventory-onhand-group">
+        <h3>{{ category }}</h3>
+        <ul>
+          {% for ing in items %}
+          <li>{{ ing.name }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <p class="footer-links no-print">
+    <a href="{{ url_for('bar_ingredients') }}">Change on-hand status</a>
+    ·
+    <a href="{{ url_for('admin') }}">Admin home</a>
+  </p>
+</body>
+</html>

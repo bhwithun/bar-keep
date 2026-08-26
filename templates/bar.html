@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ list_title }} · Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bar{% if theme %} bar-theme{% endif %}"{% if palette_style %} style="{{ palette_style }}"{% endif %}>
+  {% set featured_names = featured_names|default([]) %}
+  {% set list_kind = list_kind|default('') %}
+  {% set list_title = list_title|default(theme.name if theme else 'Full menu') %}
+  {% set list_blurb = list_blurb|default('') %}
+  {% set list_endpoint = list_endpoint|default(none) %}
+  {% set list_empty = list_empty|default('') %}
+  <div class="bar-sticky">
+    {% include "_site_chrome.html" %}
+    <header class="bar-header">
+      <div>
+        <h1>{{ list_title }}</h1>
+        <p class="muted">
+          {% if list_blurb %}{{ list_blurb }} · {% endif %}
+          {% if include_unmakeable %}
+          {{ makeable_count }} you can make · {{ published_count }} in {% if list_kind %}this list{% elif theme %}this theme{% else %}the full menu{% endif %}
+          {% else %}
+          {{ makeable_count }} you can make
+          {% if published_count > makeable_count %}
+          · {{ published_count - makeable_count }} hidden (out of stock)
+          {% endif %}
+          {% endif %}
+          · {{ on_hand_count }}/{{ ingredient_count }} ingredients on hand
+        </p>
+        <p class="list-mode-toggle">
+          {% if include_unmakeable %}
+          <a class="btn ghost" href="{% if list_endpoint %}{{ url_for(list_endpoint) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug) }}{% else %}{{ url_for('bar_menu') }}{% endif %}">Makeable only</a>
+          <span class="btn primary" aria-current="page">Show all</span>
+          {% else %}
+          <span class="btn primary" aria-current="page">Makeable only</span>
+          <a class="btn ghost" href="{% if list_endpoint %}{{ url_for(list_endpoint, all=1) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug, all=1) }}{% else %}{{ url_for('bar_menu', all=1) }}{% endif %}">Show all</a>
+          {% endif %}
+        </p>
+      </div>
+    </header>
+
+    {% if cards and not list_kind %}
+    <div class="name-filter" id="name-filter">
+      <label class="visually-hidden" for="name-filter-input">Filter drinks by name</label>
+      <div class="name-filter-row">
+        <input
+          id="name-filter-input"
+          type="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          placeholder="Filter by name…"
+        >
+        <button type="button" class="btn ghost" id="name-filter-clear" hidden>Clear</button>
+      </div>
+      <p class="name-filter-status muted" id="name-filter-status" aria-live="polite">
+        <span id="name-filter-shown">{{ recipe_count }}</span> of
+        <span id="name-filter-total">{{ recipe_count }}</span> shown
+        · only on this phone
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <main class="recipe-list">
+    {% if not cards %}
+    <div class="panel empty-panel">
+      {% if not published_count and list_empty %}
+      <p>{{ list_empty }}</p>
+      {% elif theme %}
+      <p>Nothing in {{ theme.name }} matches the current ingredients.</p>
+      {% elif list_kind %}
+      <p>Nothing in {{ list_title }} matches the current ingredients.</p>
+      {% else %}
+      <p>No recipes match the current ingredients.</p>
+      {% endif %}
+      {% if published_count %}
+      <p class="muted">Show all to see grayed-out drinks and what you’re missing.</p>
+      {% elif not list_empty %}
+      <p class="muted">Mark more items on hand, or pick another theme.</p>
+      {% endif %}
+      <p style="margin-top: 1rem">
+        {% if published_count %}
+        <a class="btn primary" href="{% if list_endpoint %}{{ url_for(list_endpoint, all=1) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug, all=1) }}{% else %}{{ url_for('bar_menu', all=1) }}{% endif %}">Show all</a>
+        {% endif %}
+        <a class="btn ghost" href="{{ url_for('bar_ingredients') }}">Edit ingredients</a>
+      </p>
+    </div>
+    {% else %}
+    <div class="recipe-cards" id="recipe-cards"{% if list_kind %} data-preserve-order="1"{% endif %}>
+      {% for card in cards %}
+      <a class="recipe-card{% if not card.makeable %} unmakeable{% endif %}"
+         href="{% if list_kind %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, theme=theme.slug) }}{% else %}{{ url_for('recipe_detail', recipe_id=card.recipe.id) }}{% endif %}"
+         data-rank="{{ loop.index }}"
+         data-search="{{ (card.recipe.name ~ ' ' ~ (card.recipe.tags or '') ~ ' ' ~ (card.recipe.category or '') ~ ' ' ~ (card.missing | join(' '))) | e }}">
+        <div class="recipe-card-top">
+          <div class="recipe-card-heading">
+            <h3>{{ card.recipe.name }}</h3>
+            <p class="rating-line">
+              {% if card.rating %}
+              {% for i in range(1, 6) %}
+              <span class="star {% if i <= card.rating.avg|round|int %}filled{% endif %}" aria-hidden="true">★</span>
+              {% endfor %}
+              <span class="rating-meta">{{ '%.1f'|format(card.rating.avg) }} ({{ card.rating.count }})</span>
+              {% else %}
+              <span class="muted">No ratings yet</span>
+              {% endif %}
+            </p>
+            <p class="recipe-card-cat">{{ card.recipe.category }}</p>
+          </div>
+          <div class="recipe-card-vessel">
+            <img
+              class="vessel-thumb"
+              src="{{ glassware_icon_url(card.recipe.glassware, card.recipe.category) }}"
+              alt=""
+              width="44"
+              height="44"
+              loading="lazy"
+            >
+            {% if card.recipe.glassware %}
+            <span class="chip">{{ card.recipe.glassware }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if card.recipe.description %}
+        <p class="recipe-card-desc">{{ card.recipe.description }}</p>
+        {% endif %}
+        {% if card.ingredients %}
+        <p class="recipe-card-ings">{% for name in card.ingredients %}<span{% if name in featured_names %} class="featured-ing"{% endif %}>{{ name }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+        {% endif %}
+        {% if card.missing %}
+        <p class="recipe-card-missing">
+          <span class="recipe-missing-label">Need:</span>
+          {% for name in card.missing %}
+          <span class="need-ing">{{ name }}</span>{% if not loop.last %} {% endif %}
+          {% endfor %}
+        </p>
+        {% endif %}
+        {% if card.tags %}
+        <p class="recipe-card-tags">
+          {% for t in card.tags %}<span class="tag">{{ t }}</span>{% endfor %}
+        </p>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% if not list_kind %}
+    <div class="panel empty-panel" id="name-filter-empty" hidden>
+      <p>No drinks match that name.</p>
+      <p class="muted">Try fewer letters, or clear the filter.</p>
+    </div>
+    {% endif %}
+    {% endif %}
+  </main>
+
+  <p class="footer-links">
+    <a href="{{ url_for('bar') }}">Themes</a>
+    ·
+    <a href="{{ url_for('bar_menu') }}">Full menu</a>
+    ·
+    <a href="{{ url_for('bar_recent') }}">Most recent</a>
+    ·
+    <a href="{{ url_for('bar_top') }}">Top ten</a>
+    ·
+    <a href="{{ url_for('bar_ingredients') }}">What’s on hand?</a>
+  </p>
+
+  {% if cards and not list_kind %}
+  <script>
+    (function () {
+      // Local-only name filter — never sent to the server; other phones unaffected.
+      var STORAGE_KEY = 'barNameFilter';
+      var input = document.getElementById('name-filter-input');
+      var clearBtn = document.getElementById('name-filter-clear');
+      var cards = Array.prototype.slice.call(
+        document.querySelectorAll('#recipe-cards .recipe-card')
+      );
+      var emptyEl = document.getElementById('name-filter-empty');
+      var shownEl = document.getElementById('name-filter-shown');
+      var total = cards.length;
+
+      function normalize(s) {
+        return String(s || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      }
+
+      function editDistance1(a, b) {
+        // True if Levenshtein distance <= 1 (for light typo tolerance).
+        if (a === b) return true;
+        var la = a.length, lb = b.length;
+        if (Math.abs(la - lb) > 1) return false;
+        if (la > lb) return editDistance1(b, a);
+        // la <= lb
+        var i = 0, j = 0, edits = 0;
+        while (i < la && j < lb) {
+          if (a.charAt(i) === b.charAt(j)) {
+            i++; j++;
+          } else {
+            edits++;
+            if (edits > 1) return false;
+            if (la === lb) { i++; j++; }
+            else { j++; } // insertion in a / deletion in b
+          }
+        }
+        if (j < lb || i < la) edits++;
+        return edits <= 1;
+      }
+
+      function isSubsequence(query, text) {
+        var qi = 0;
+        for (var ti = 0; ti < text.length && qi < query.length; ti++) {
+          if (text.charAt(ti) === query.charAt(qi)) qi++;
+        }
+        return qi === query.length;
+      }
+
+      function tokenMatches(token, haystack, words) {
+        if (!token) return true;
+        if (haystack.indexOf(token) !== -1) return true;
+        // Compact form: "paperplane" vs "paper plane"
+        if (haystack.replace(/ /g, '').indexOf(token.replace(/ /g, '')) !== -1) {
+          return true;
+        }
+        // Subsequence for short partials (e.g. "ngr" → negroni)
+        if (token.length >= 2 && isSubsequence(token, haystack.replace(/ /g, ''))) {
+          return true;
+        }
+        // Typo: distance ≤ 1 vs any word
+        if (token.length >= 4) {
+          for (var w = 0; w < words.length; w++) {
+            if (editDistance1(token, words[w])) return true;
+          }
+        }
+        return false;
+      }
+
+      function matches(query, searchText) {
+        var q = normalize(query);
+        if (!q) return true;
+        var hay = normalize(searchText);
+        var words = hay.split(' ').filter(Boolean);
+        var tokens = q.split(' ').filter(Boolean);
+        for (var i = 0; i < tokens.length; i++) {
+          if (!tokenMatches(tokens[i], hay, words)) return false;
+        }
+        return true;
+      }
+
+      function cardName(card) {
+        var h = card.querySelector('h3');
+        return h ? h.textContent.trim() : (card.getAttribute('data-search') || '');
+      }
+
+      function reorderCards(compare) {
+        var parent = document.getElementById('recipe-cards');
+        if (!parent) return;
+        cards.sort(compare);
+        cards.forEach(function (card) {
+          parent.appendChild(card);
+        });
+      }
+
+      function sortCardsByName() {
+        reorderCards(function (a, b) {
+          return cardName(a).localeCompare(cardName(b), undefined, { sensitivity: 'base' });
+        });
+      }
+
+      function sortCardsByRank() {
+        reorderCards(function (a, b) {
+          var ra = parseInt(a.getAttribute('data-rank'), 10) || 0;
+          var rb = parseInt(b.getAttribute('data-rank'), 10) || 0;
+          return ra - rb;
+        });
+      }
+
+      function applyFilter() {
+        var q = input.value;
+        var shown = 0;
+        var parent = document.getElementById('recipe-cards');
+        if (parent && parent.getAttribute('data-preserve-order')) {
+          sortCardsByRank();
+        } else {
+          sortCardsByName();
+        }
+        cards.forEach(function (card) {
+          var ok = matches(q, card.getAttribute('data-search') || card.textContent);
+          card.hidden = !ok;
+          if (ok) shown++;
+        });
+        if (shownEl) shownEl.textContent = String(shown);
+        if (emptyEl) emptyEl.hidden = shown !== 0;
+        if (clearBtn) clearBtn.hidden = !normalize(q);
+        try {
+          if (normalize(q)) sessionStorage.setItem(STORAGE_KEY, q);
+          else sessionStorage.removeItem(STORAGE_KEY);
+        } catch (e) {}
+      }
+
+      input.addEventListener('input', applyFilter);
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          input.value = '';
+          applyFilter();
+          input.focus();
+        });
+      }
+
+      try {
+        var saved = sessionStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          input.value = saved;
+        }
+      } catch (e) {}
+      applyFilter();
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

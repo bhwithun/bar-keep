@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin admin-settings-page">
+  <div class="admin-sticky">
+    {% set nav_current = 'admin-settings' %}
+    {% set breadcrumbs = [
+      {"label": "Admin", "url": url_for("admin")},
+      {"label": "Settings", "url": url_for("admin_settings")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="admin-header">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted">Bar name, Wi‑Fi, and the QR codes shown on the TV</p>
+      </div>
+    </header>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <form method="post">
+    <section class="panel">
+      <h2>Bar name</h2>
+      <p class="muted small-gap">
+        Shown on the TV boards: “{{ bar_name }}” and “Featured at {{ bar_name }}”.
+      </p>
+      <div class="form-grid">
+        <label class="span-2">Name
+          <input name="bar_name" value="{{ bar_name }}" required
+                 placeholder="e.g. The Raven" maxlength="80" autocomplete="off">
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>House Wi‑Fi</h2>
+      <p class="muted small-gap">
+        Guests scan the first QR code to join this network. Stored only on this machine.
+      </p>
+      <div class="form-grid">
+        <label class="span-2">Network name (SSID)
+          <input name="wifi_ssid" value="{{ wifi_ssid }}" required
+                 placeholder="e.g. Casa-Bar" autocomplete="off">
+        </label>
+        <label class="span-2">Password
+          <input name="wifi_password" type="text" value="{{ wifi_password }}"
+                 placeholder="Leave blank only for open networks"
+                 autocomplete="off">
+        </label>
+        <label>Security
+          <select name="wifi_security">
+            <option value="WPA" {% if wifi_security == 'WPA' %}selected{% endif %}>WPA / WPA2 / WPA3</option>
+            <option value="WEP" {% if wifi_security == 'WEP' %}selected{% endif %}>WEP (legacy)</option>
+            <option value="nopass" {% if wifi_security == 'nopass' %}selected{% endif %}>Open (no password)</option>
+          </select>
+        </label>
+        <label class="check" style="padding-top: 1.6rem">
+          <input type="checkbox" name="wifi_hidden" {% if wifi_hidden %}checked{% endif %}>
+          Hidden network
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Bar link (second QR)</h2>
+      <p class="muted small-gap">
+        URL phones open after joining Wi‑Fi. Use a LAN address guests can reach
+        (this machine’s IP and port), not <code>localhost</code>.
+      </p>
+      <div class="form-grid">
+        <label class="span-2">Public base URL (optional override)
+          <input name="public_base_url" value="{{ public_base_url }}"
+                 placeholder="{{ suggested_base_url }}"
+                 inputmode="url" autocomplete="off">
+        </label>
+      </div>
+      <p class="muted small-gap" style="margin-top: 0.75rem">
+        Current bar URL in QR:
+        <strong class="join-url-inline">{{ bar_url }}</strong>
+      </p>
+      <p class="muted small-gap">
+        Leave blank to use whatever host guests used to open this site
+        (fine if you always open admin via the LAN IP). Set explicitly if the
+        auto URL would be wrong (e.g. reverse proxy or hostname only on your laptop).
+      </p>
+    </section>
+
+    <div class="actions-row sticky-actions">
+      <button type="submit" class="btn primary">Save settings</button>
+    </div>
+  </form>
+
+  {% if wifi_ssid %}
+  <section class="panel">
+    <h2>Preview</h2>
+    <div class="settings-qr-preview">
+      <figure>
+        <span class="qr-mark-wrap">
+          <img src="{{ url_for('join_qr_wifi') }}" alt="Wi‑Fi QR" width="160" height="160">
+          <span class="qr-mark" aria-hidden="true">1</span>
+        </span>
+        <figcaption>Join Network</figcaption>
+      </figure>
+      <figure>
+        <span class="qr-mark-wrap">
+          <img src="{{ url_for('join_qr_bar') }}" alt="Bar QR" width="160" height="160">
+          <span class="qr-mark" aria-hidden="true">2</span>
+        </span>
+        <figcaption>Phone Menu</figcaption>
+      </figure>
+    </div>
+  </section>
+  {% endif %}
+</body>
+</html>

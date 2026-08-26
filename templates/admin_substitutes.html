@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Substitutes · Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin admin-substitutes-page">
+  <div class="admin-sticky">
+    {% set nav_current = 'admin-substitutes' %}
+    {% set breadcrumbs = [
+      {"label": "Admin", "url": url_for("admin")},
+      {"label": "Substitutes", "url": url_for("admin_substitutes")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="admin-header">
+      <div>
+        <h1>Substitutes</h1>
+        <p class="muted">Stock each bottle separately. If a recipe needs one and you have the other, it still shows on the menu.</p>
+      </div>
+    </header>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <section class="panel">
+    <h2>Add a pair</h2>
+    <p class="muted small-gap">Works both ways: brandy covers cognac, and cognac covers brandy.</p>
+    <form method="post" class="sub-add-form">
+      <input type="hidden" name="action" value="add">
+      <div class="form-grid">
+        <label>Ingredient
+          <select name="ingredient_id" required>
+            <option value="">Choose…</option>
+            {% for ing in ingredients %}
+            <option value="{{ ing.id }}">{{ ing.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Can be swapped with
+          <select name="substitute_id" required>
+            <option value="">Choose…</option>
+            {% for ing in ingredients %}
+            <option value="{{ ing.id }}">{{ ing.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <p style="margin-top: 1rem">
+        <button type="submit" class="btn primary">Add pair</button>
+      </p>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Current pairs ({{ pairs|length }})</h2>
+    {% if not pairs %}
+    <p class="muted">None yet. Add two bottles that can stand in for each other.</p>
+    {% else %}
+    <ul class="sub-pair-list">
+      {% for p in pairs %}
+      <li>
+        <span class="sub-pair-names">{{ p.a_name }} <span class="muted">↔</span> {{ p.b_name }}</span>
+        <form method="post" class="inline-form">
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="a_id" value="{{ p.a_id }}">
+          <input type="hidden" name="b_id" value="{{ p.b_id }}">
+          <button type="submit" class="btn ghost">Remove</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</body>
+</html>

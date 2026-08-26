@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · Home Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin admin-home">
+  <div class="admin-sticky">
+    {% set nav_current = 'admin' %}
+    {% set breadcrumbs = [
+      {"label": "Admin", "url": url_for("admin")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="admin-header">
+      <div>
+        <h1>Bar Admin</h1>
+        <p class="muted">Manage recipes and ingredients — no login required</p>
+      </div>
+    </header>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="admin-dash">
+    <a class="dash-card panel" href="{{ url_for('admin_recipes') }}">
+      <h2>Recipes</h2>
+      <p class="dash-count">{{ recipe_count }}</p>
+      <p class="muted">Add, edit, publish, or hide drinks</p>
+    </a>
+    <a class="dash-card panel" href="{{ url_for('admin_inventory') }}">
+      <h2>Inventory</h2>
+      <p class="dash-count" style="font-size: 1.35rem; margin-top: 0.75rem">Stock report</p>
+      <p class="muted">What you have · what to buy at the store</p>
+    </a>
+    <a class="dash-card panel" href="{{ url_for('admin_substitutes') }}">
+      <h2>Substitutes</h2>
+      <p class="dash-count" style="font-size: 1.35rem; margin-top: 0.75rem">Swap bottles</p>
+      <p class="muted">Cognac for brandy, peach for apricot, and your own pairs</p>
+    </a>
+    <a class="dash-card panel" href="{{ url_for('admin_settings') }}">
+      <h2>Settings</h2>
+      <p class="dash-count" style="font-size: 1.35rem; margin-top: 0.75rem">
+        {% if wifi_configured %}QR ready{% else %}Set up Wi‑Fi{% endif %}
+      </p>
+      <p class="muted">Wi‑Fi + bar link for phone QR codes</p>
+    </a>
+  </div>
+
+  <section class="panel">
+    <h2>Quick links</h2>
+    <div class="actions-row">
+      <a class="btn primary" href="{{ url_for('admin_recipe_new') }}">New recipe</a>
+      <a class="btn ghost" href="{{ url_for('admin_recipes') }}">All recipes</a>
+      <a class="btn ghost" href="{{ url_for('admin_inventory') }}">Inventory report</a>
+      <a class="btn ghost" href="{{ url_for('admin_substitutes') }}">Substitutes</a>
+    </div>
+  </section>
+
+  {% if recipes %}
+  <section class="panel">
+    <h2>Recent recipes</h2>
+    <ul class="simple-list">
+      {% for r in recipes[:8] %}
+      <li>
+        <a href="{{ url_for('admin_recipe_edit', recipe_id=r.id) }}">{{ r.name }}</a>
+        <span class="muted">{{ r.category }}{% if not r.published %} · hidden{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</body>
+</html>

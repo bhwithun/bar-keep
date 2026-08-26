@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Available ingredients · Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bar">
+  <div class="bar-sticky">
+    {% set nav_current = 'onhand' %}
+    {% set breadcrumbs = [
+      {"label": "Full Menu", "url": url_for("bar")},
+      {"label": "Ingredients", "url": url_for("bar_ingredients")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="bar-header">
+      <div>
+        <h1>Available ingredients</h1>
+        <p class="muted" id="ing-status">
+          <span id="on-hand-count">{{ on_hand_count }}</span> of
+          <span id="ing-total">{{ ingredient_count }}</span> on hand
+          · tap a name to toggle
+        </p>
+        <p class="featured-status" id="featured-status">
+          {% if featured_names %}
+          <a href="{{ url_for('bar_featured') }}">Featured</a>:
+          {{ featured_names | join(' · ') }}
+          {% else %}
+          <span class="muted">Star a bottle to push it on the Featured menu</span>
+          {% endif %}
+        </p>
+        {% if category_legend %}
+        <p class="ing-legend" aria-label="Ingredient categories">
+          {% for cat in category_legend %}
+          <span class="ing-swatch cat-{{ cat|lower }}">{{ cat }}</span>
+          {% endfor %}
+        </p>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if ingredient_count %}
+    <div class="name-filter" id="ing-filter">
+      <label class="visually-hidden" for="ing-filter-input">Filter ingredients by name</label>
+      <div class="name-filter-row">
+        <input
+          id="ing-filter-input"
+          type="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          placeholder="Filter ingredients…"
+        >
+        <button type="button" class="btn ghost" id="ing-filter-clear" hidden>Clear</button>
+      </div>
+      <p class="name-filter-status muted" id="ing-filter-status" aria-live="polite">
+        <span id="ing-filter-shown">{{ ingredient_count }}</span> of
+        {{ ingredient_count }} shown
+        · only on this phone
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <p class="filter-hint muted">
+    Uncheck what you’ve run out of. The TV and recipe list update from this same list.
+    Substitutes (Admin) let one bottle cover another — e.g. brandy for cognac.
+  </p>
+
+  <main class="ingredients-page">
+    {% if ingredients %}
+    <ul class="filter-list filter-list-page">
+      {% for ing in ingredients %}
+      <li data-search="{{ (ing.name ~ ' ' ~ (ing.category or '') ~ (' featured' if ing.featured else '')) | e }}">
+        <div class="filter-chip cat-{{ ing.cat_slug }} {% if ing.in_filter %}on{% else %}off{% endif %}{% if ing.featured %} featured{% endif %}">
+          <form class="toggle-ing-form" method="post"
+                action="{{ url_for('toggle_filter_ingredient', ingredient_id=ing.id) }}"
+                data-ingredient-id="{{ ing.id }}">
+            <button type="submit" class="filter-chip-toggle" title="{{ ing.category }}">
+              <span class="filter-check" aria-hidden="true">{% if ing.in_filter %}✓{% else %}○{% endif %}</span>
+              <span class="ing-icon" aria-hidden="true">
+                {% include ['ing_icons/' ~ ing.icon ~ '.svg', 'ing_icons/_default.svg'] %}
+              </span>
+              <span class="ing-name">{{ ing.name }}</span>
+            </button>
+          </form>
+          <form class="feature-ing-form" method="post"
+                action="{{ url_for('toggle_featured_ingredient', ingredient_id=ing.id) }}"
+                data-ingredient-id="{{ ing.id }}"
+                data-ingredient-name="{{ ing.name | e }}">
+            <button type="submit" class="feature-star{% if ing.featured %} on{% endif %}"
+                    aria-pressed="{{ 'true' if ing.featured else 'false' }}"
+                    title="{% if ing.featured %}Unfeature {{ ing.name }}{% else %}Feature {{ ing.name }}{% endif %}"
+                    aria-label="{% if ing.featured %}Unfeature {{ ing.name }}{% else %}Feature {{ ing.name }}{% endif %}">★</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="panel empty-panel">
+      <p>No ingredients yet.</p>
+      <p class="muted">Ingredients show up here as they’re used on recipes.</p>
+    </div>
+    {% endif %}
+    <div class="panel empty-panel" id="ing-filter-empty" hidden>
+      <p>No ingredients match that filter.</p>
+      <p class="muted">Try fewer letters, or clear the filter.</p>
+    </div>
+  </main>
+
+  <p class="footer-links">
+    <a href="{{ url_for('bar') }}">← Back to recipes</a>
+  </p>
+
+  <script>
+    (function () {
+      // Toggle ingredients without a full page reload so the scroll position stays put.
+      function applyState(chip, on) {
+        chip.classList.toggle('on', on);
+        chip.classList.toggle('off', !on);
+        var check = chip.querySelector('.filter-check');
+        if (check) check.textContent = on ? '✓' : '○';
+      }
+
+      function updateCounts(onHand, total) {
+        var a = document.getElementById('on-hand-count');
+        var b = document.getElementById('ing-total');
+        if (a) a.textContent = onHand;
+        if (b && total != null) b.textContent = total;
+      }
+
+      var popSrc = {{ url_for('static', filename='pop.wav') | tojson }};
+      var popAudio = new Audio(popSrc);
+      popAudio.preload = 'auto';
+      popAudio.volume = 0.6;
+
+      function playPop() {
+        try {
+          var a = popAudio.cloneNode();
+          a.volume = popAudio.volume;
+          var p = a.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (err) {}
+      }
+
+      var filterInput = document.getElementById('ing-filter-input');
+      var filterClear = document.getElementById('ing-filter-clear');
+      var filterShown = document.getElementById('ing-filter-shown');
+      var filterEmpty = document.getElementById('ing-filter-empty');
+      var ingRows = Array.prototype.slice.call(
+        document.querySelectorAll('.filter-list-page > li')
+      );
+      var STORAGE_KEY = 'barIngFilter';
+
+      function normalize(s) {
+        return String(s || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      }
+
+      function matches(query, hay) {
+        var q = normalize(query);
+        if (!q) return true;
+        hay = normalize(hay);
+        var compactHay = hay.replace(/ /g, '');
+        var tokens = q.split(' ').filter(Boolean);
+        for (var i = 0; i < tokens.length; i++) {
+          var tok = tokens[i];
+          if (hay.indexOf(tok) === -1 && compactHay.indexOf(tok) === -1) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function applyIngFilter() {
+        if (!filterInput) return;
+        var q = filterInput.value;
+        var n = 0;
+        ingRows.forEach(function (row) {
+          var ok = matches(q, row.getAttribute('data-search') || '');
+          row.hidden = !ok;
+          if (ok) n++;
+        });
+        if (filterShown) filterShown.textContent = String(n);
+        if (filterEmpty) filterEmpty.hidden = n !== 0;
+        if (filterClear) filterClear.hidden = !normalize(q);
+        try {
+          if (normalize(q)) sessionStorage.setItem(STORAGE_KEY, q);
+          else sessionStorage.removeItem(STORAGE_KEY);
+        } catch (err) {}
+      }
+
+      if (filterInput) {
+        try {
+          var saved = sessionStorage.getItem(STORAGE_KEY);
+          if (saved) filterInput.value = saved;
+        } catch (err) {}
+        filterInput.addEventListener('input', applyIngFilter);
+        applyIngFilter();
+        if (filterClear) {
+          filterClear.addEventListener('click', function () {
+            filterInput.value = '';
+            applyIngFilter();
+            filterInput.focus();
+          });
+        }
+      }
+
+      var featuredStatus = document.getElementById('featured-status');
+      var featuredHref = {{ url_for('bar_featured') | tojson }};
+
+      function applyFeatureState(btn, on, name) {
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        var label = (on ? 'Unfeature ' : 'Feature ') + (name || '');
+        btn.setAttribute('title', label);
+        btn.setAttribute('aria-label', label);
+        var chip = btn.closest('.filter-chip');
+        if (chip) chip.classList.toggle('featured', on);
+        var row = btn.closest('li');
+        if (row) {
+          var search = row.getAttribute('data-search') || '';
+          search = search.replace(/\s*featured\s*/g, ' ').trim();
+          if (on) search = (search + ' featured').trim();
+          row.setAttribute('data-search', search);
+        }
+      }
+
+      function updateFeaturedHint(names) {
+        if (!featuredStatus) return;
+        names = names || [];
+        if (!names.length) {
+          featuredStatus.innerHTML = '<span class="muted">Star a bottle to push it on the Featured menu</span>';
+          return;
+        }
+        featuredStatus.innerHTML = '<a href="' + featuredHref + '">Featured</a>: '
+          + names.map(function (n) {
+            return n.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+          }).join(' · ');
+      }
+
+      document.querySelectorAll('.feature-ing-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = form.querySelector('button');
+          if (!btn || btn.disabled) return;
+          btn.disabled = true;
+          playPop();
+          fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'fetch',
+            },
+            credentials: 'same-origin',
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('feature failed');
+              return res.json();
+            })
+            .then(function (data) {
+              if (!data.ok) throw new Error(data.error || 'feature failed');
+              applyFeatureState(btn, !!data.featured, form.getAttribute('data-ingredient-name') || '');
+              updateFeaturedHint(data.featured_names);
+            })
+            .catch(function () {
+              window.location.reload();
+            })
+            .finally(function () {
+              btn.disabled = false;
+            });
+        });
+      });
+
+      document.querySelectorAll('.toggle-ing-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = form.querySelector('button');
+          var chip = form.closest('.filter-chip');
+          if (!btn || !chip || btn.disabled) return;
+          btn.disabled = true;
+          playPop();
+
+          fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'fetch',
+            },
+            credentials: 'same-origin',
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('toggle failed');
+              return res.json();
+            })
+            .then(function (data) {
+              if (!data.ok) throw new Error(data.error || 'toggle failed');
+              applyState(chip, !!data.in_filter);
+              updateCounts(data.on_hand_count, data.ingredient_count);
+            })
+            .catch(function () {
+              // Reload rather than re-POST (avoids double-toggle if the server already saved)
+              window.location.reload();
+            })
+            .finally(function () {
+              btn.disabled = false;
+            });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
