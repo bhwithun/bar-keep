@@ -210,6 +210,7 @@ def init_db():
     _collapse_citrus_garnish_ingredients(db)
     _unify_coffee_liqueur_as_kahlua(db)
     _replace_sweet_and_sour_mix(db)
+    _ensure_named_ingredients(db)
     _seed_ingredient_substitutes(db)
     _ensure_catalog_recipes(db)
     _ensure_themes(db)
@@ -772,6 +773,27 @@ CATALOG_RECIPES = (
 )
 
 
+# Bottles that should exist even on a live DB that already ran the first-time seed.
+CATALOG_INGREDIENTS = (
+    ("Grand Marnier", "Spirit", 82),
+)
+
+
+def _ensure_named_ingredients(db):
+    """Insert catalog bottles if missing; do not change existing rows."""
+    for name, category, sort_order in CATALOG_INGREDIENTS:
+        db.execute(
+            """
+            INSERT INTO ingredients (name, category, sort_order, in_filter)
+            SELECT ?, ?, ?, 1
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ingredients WHERE name = ?
+            )
+            """,
+            (name, category, sort_order, name),
+        )
+
+
 def _ensure_catalog_recipes(db):
     """Insert extra house recipes when missing; never overwrite bartender edits."""
     existing = {
@@ -1104,6 +1126,7 @@ def _seed(db):
         ("Tequila", "Spirit", 60),
         ("Ouzo", "Spirit", 70),
         ("Triple sec", "Spirit", 80),
+        ("Grand Marnier", "Spirit", 82),
         ("Dry vermouth", "Spirit", 90),
         ("Sweet vermouth", "Spirit", 100),
         ("Campari", "Spirit", 110),

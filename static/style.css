@@ -516,11 +516,11 @@ body.tv .tv-rating .rating-meta {
 }
 
 .tv-qr-left {
-  left: clamp(18px, 2.2vw, 36px);
+  left: clamp(8.5rem, 15vw, 12rem);
 }
 
 .tv-qr-right {
-  right: clamp(18px, 2.2vw, 36px);
+  right: clamp(8.5rem, 15vw, 12rem);
   pointer-events: auto; /* bar QR is a clickable link */
 }
 
@@ -623,7 +623,7 @@ a.tv-qr-link:hover {
   display: flex;
   align-items: stretch;
   gap: 1.1rem;
-  max-width: min(36rem, calc(100vw - 22rem));
+  max-width: min(36rem, calc(100vw - 40rem));
   padding: 0.45rem 1.1rem 0.4rem;
   background: rgba(15, 20, 25, 0.88);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -640,7 +640,7 @@ a.tv-qr-link:hover {
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
-  max-width: min(34rem, calc(100vw - 24rem));
+  max-width: min(34rem, calc(100vw - 42rem));
   padding: 0.42rem 1.05rem 0.5rem;
   background: color-mix(in srgb, var(--accent) 18%, rgba(15, 20, 25, 0.94));
   border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
@@ -733,7 +733,7 @@ a.tv-qr-link:hover {
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
-  max-width: min(20rem, calc(100vw - 24rem));
+  max-width: min(20rem, calc(100vw - 42rem));
   padding: 0.32rem 0.85rem 0.38rem;
   background: color-mix(in srgb, var(--accent) 20%, rgba(15, 20, 25, 0.94));
   border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);

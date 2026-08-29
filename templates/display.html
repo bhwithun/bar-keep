@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tv-sets.css') }}">
 </head>
 <body class="tv{% if theme %} tv-theme{% endif %}{% if theme_index %} tv-theme-index{% endif %}{% if stock %} tv-stock{% endif %}"
       data-recipe-count="{{ recipe_count }}"
@@ -24,6 +25,16 @@
       {% if palette_style %}style="{{ palette_style }}"{% endif %}>
   {# .tv-frame = decorative border + inner padding; .tv-shell = content area only #}
   <div class="tv-frame">
+    {% if theme %}
+    <div class="tv-set" aria-hidden="true">
+      <span class="tv-set-tl"></span>
+      <span class="tv-set-tr"></span>
+      <span class="tv-set-bl"></span>
+      <span class="tv-set-br"></span>
+      <span class="tv-set-top"></span>
+      <span class="tv-set-bottom"></span>
+    </div>
+    {% endif %}
     {% with ticker_class='tv-ticker' %}
     {% include "_quote_ticker.html" %}
     {% endwith %}

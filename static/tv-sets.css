@@ -1,0 +1,574 @@
+/* Unique TV stage sets — keyed by body[data-theme-slug]. Ornaments hug the frame. */
+
+.tv-set {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tv-frame > .tv-ticker,
+.tv-frame > .tv-shell {
+  position: relative;
+  z-index: 2;
+}
+
+.tv-set-tl,
+.tv-set-tr,
+.tv-set-bl,
+.tv-set-br {
+  position: absolute;
+  width: min(17vw, 130px);
+  height: min(26vh, 170px);
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.92;
+}
+
+.tv-set-tl { top: 6px; left: 8px; background-position: top left; }
+.tv-set-tr { top: 6px; right: 8px; background-position: top right; }
+.tv-set-bl { bottom: 6px; left: 8px; background-position: bottom left; }
+.tv-set-br { bottom: 6px; right: 8px; background-position: bottom right; }
+
+.tv-set-top,
+.tv-set-bottom {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  height: min(9vh, 72px);
+  pointer-events: none;
+}
+
+.tv-set-top { top: 0; }
+.tv-set-bottom { bottom: 0; }
+
+/* Theme boards: drop the house-bar L-brackets and inset gold rails.
+   Those lines cut through torches, agave, and fans. The stage set is the frame. */
+body.tv.tv-theme .tv-frame {
+  background-image: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 0 48px rgba(0, 0, 0, 0.16);
+}
+
+/* —— Tiki / Tropical —— */
+body.tv[data-theme-slug="tiki-tropical"] .tv-frame {
+  border: 6px solid #6b4226;
+  box-shadow:
+    inset 0 0 0 4px #c4a06a,
+    inset 0 0 0 7px #3a2414,
+    0 0 0 1px #1a1008;
+  background-image:
+    repeating-linear-gradient(90deg, #5a3418 0 10px, #7a4a22 10px 14px, #4a2a12 14px 18px);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-top {
+  height: min(12vh, 90px);
+  background: url("tv-sets/palm.svg") center top / 70% no-repeat;
+  opacity: 0.85;
+}
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-tl,
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-tr,
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-bl,
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-br {
+  background-image: url("tv-sets/torch.svg");
+  animation: tv-torch 1.6s ease-in-out infinite alternate;
+}
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="tiki-tropical"] .tv-set-br { transform: scaleX(-1); }
+@keyframes tv-torch {
+  from { filter: brightness(0.95) saturate(1); }
+  to { filter: brightness(1.25) saturate(1.25); }
+}
+
+/* —— Mexican / Agave —— */
+body.tv[data-theme-slug="mexican-agave"] .tv-set-top {
+  height: 28px;
+  background:
+    repeating-linear-gradient(90deg,
+      #c23b2a 0 18px, #f2e6c4 18px 28px, #2f6b3a 28px 46px, #f2e6c4 46px 56px);
+  opacity: 0.9;
+  -webkit-mask-image: radial-gradient(circle at 12px 100%, transparent 10px, #000 11px);
+  mask-image: radial-gradient(circle at 12px 100%, transparent 10px, #000 11px);
+  -webkit-mask-size: 24px 28px;
+  mask-size: 24px 28px;
+}
+body.tv[data-theme-slug="mexican-agave"] .tv-set-bottom {
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #c23b2a 0 16px, #e8d48a 16px 28px, #3d7a44 28px 44px);
+}
+body.tv[data-theme-slug="mexican-agave"] .tv-set-tl,
+body.tv[data-theme-slug="mexican-agave"] .tv-set-tr { background-image: url("tv-sets/agave.svg"); }
+body.tv[data-theme-slug="mexican-agave"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="mexican-agave"] .tv-set-bl,
+body.tv[data-theme-slug="mexican-agave"] .tv-set-br { background-image: url("tv-sets/chili.svg"); height: min(20vh, 130px); }
+body.tv[data-theme-slug="mexican-agave"] .tv-set-br { transform: scaleX(-1); }
+
+/* —— Italian Aperitivo —— */
+body.tv[data-theme-slug="italian-aperitivo"] .tv-set-top {
+  height: 36px;
+  background: repeating-linear-gradient(90deg,
+    #c62828 0 22px, #f4efe4 22px 36px, #2c2c2c 36px 48px, #f4efe4 48px 62px);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+}
+body.tv[data-theme-slug="italian-aperitivo"] .tv-frame {
+  background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,.06) 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(255,107,66,.12) 1.5px, transparent 2px);
+  background-size: 28px 28px, 36px 36px;
+}
+body.tv[data-theme-slug="italian-aperitivo"] .tv-set-bl,
+body.tv[data-theme-slug="italian-aperitivo"] .tv-set-br {
+  background-image: url("tv-sets/deco-fan.svg");
+  filter: hue-rotate(-20deg) saturate(1.4);
+}
+
+/* —— Mediterranean —— */
+body.tv[data-theme-slug="mediterranean"] .tv-frame {
+  border: 4px double #c4c86a;
+  box-shadow: inset 0 0 0 8px rgba(196, 200, 106, 0.15);
+}
+body.tv[data-theme-slug="mediterranean"] .tv-set-tl,
+body.tv[data-theme-slug="mediterranean"] .tv-set-tr,
+body.tv[data-theme-slug="mediterranean"] .tv-set-bl,
+body.tv[data-theme-slug="mediterranean"] .tv-set-br {
+  background-image: url("tv-sets/olive.svg");
+}
+body.tv[data-theme-slug="mediterranean"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="mediterranean"] .tv-set-br { transform: scaleX(-1) scaleY(-1); }
+body.tv[data-theme-slug="mediterranean"] .tv-set-bl { transform: scaleY(-1); }
+
+/* —— Asian Spice —— */
+body.tv[data-theme-slug="asian-spice"] .tv-frame {
+  background-image: radial-gradient(circle at 12px 12px, transparent 10px, rgba(240,180,60,.12) 11px, transparent 12px);
+  background-size: 36px 22px;
+}
+body.tv[data-theme-slug="asian-spice"] .tv-set-tl,
+body.tv[data-theme-slug="asian-spice"] .tv-set-tr {
+  background-image: url("tv-sets/lantern.svg");
+  height: min(28vh, 190px);
+}
+body.tv[data-theme-slug="asian-spice"] .tv-set-bl,
+body.tv[data-theme-slug="asian-spice"] .tv-set-br {
+  background-image: url("tv-sets/chili.svg");
+}
+
+/* —— Latin American —— */
+body.tv[data-theme-slug="latin-american"] .tv-set-top {
+  height: 22px;
+  background:
+    repeating-linear-gradient(90deg, #f04a78 0 14px, #ffc933 14px 28px, #3dd68c 28px 42px, #6ec8e8 42px 56px);
+  clip-path: polygon(0 0, 8px 100%, 16px 0, 24px 100%, 32px 0, 40px 100%, 48px 0, 56px 100%, 64px 0);
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% 40%, 0 100%);
+}
+body.tv[data-theme-slug="latin-american"] .tv-set-tl,
+body.tv[data-theme-slug="latin-american"] .tv-set-tr {
+  background-image: url("tv-sets/palm.svg");
+  width: min(24vw, 180px);
+  height: min(16vh, 110px);
+}
+body.tv[data-theme-slug="latin-american"] .tv-set-bl,
+body.tv[data-theme-slug="latin-american"] .tv-set-br {
+  background-image: url("tv-sets/guitar.svg");
+}
+
+/* —— American Comfort —— */
+body.tv[data-theme-slug="american-comfort"] .tv-frame {
+  border: 3px solid #d4923c;
+  box-shadow: 0 0 12px #d4923c88, inset 0 0 18px #d4923c22;
+}
+body.tv[data-theme-slug="american-comfort"] .tv-set-bottom {
+  height: 28px;
+  background:
+    repeating-conic-gradient(#1a120c 0% 25%, #e8dcc8 0% 50%) 0 0 / 18px 18px;
+  opacity: 0.35;
+}
+body.tv[data-theme-slug="american-comfort"] .tv-set-tl,
+body.tv[data-theme-slug="american-comfort"] .tv-set-tr {
+  background-image: url("tv-sets/star.svg");
+  width: 64px;
+  height: 64px;
+}
+
+/* —— Classics —— */
+body.tv[data-theme-slug="classics"] .tv-frame {
+  border: 2px solid #d4c8a8;
+  box-shadow: inset 0 0 0 1px #d4c8a8, inset 0 0 0 6px rgba(212,200,168,.15);
+}
+body.tv[data-theme-slug="classics"] .tv-set-tl,
+body.tv[data-theme-slug="classics"] .tv-set-tr,
+body.tv[data-theme-slug="classics"] .tv-set-bl,
+body.tv[data-theme-slug="classics"] .tv-set-br {
+  background-image: url("tv-sets/deco-fan.svg");
+  width: min(20vw, 150px);
+  height: min(20vw, 150px);
+}
+body.tv[data-theme-slug="classics"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="classics"] .tv-set-bl { transform: scaleY(-1); }
+body.tv[data-theme-slug="classics"] .tv-set-br { transform: scale(-1); }
+
+/* —— Sours —— */
+body.tv[data-theme-slug="sours"] .tv-set-tl { background-image: url("tv-sets/citrus.svg"); }
+body.tv[data-theme-slug="sours"] .tv-set-tr { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(70deg); }
+body.tv[data-theme-slug="sours"] .tv-set-bl { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(-20deg); }
+body.tv[data-theme-slug="sours"] .tv-set-br { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(40deg); }
+body.tv[data-theme-slug="sours"] .tv-set-tl,
+body.tv[data-theme-slug="sours"] .tv-set-tr,
+body.tv[data-theme-slug="sours"] .tv-set-bl,
+body.tv[data-theme-slug="sours"] .tv-set-br {
+  width: min(12vw, 96px);
+  height: min(12vw, 96px);
+}
+
+/* —— Spirit-forward —— */
+body.tv[data-theme-slug="spirit-forward"] .tv-frame {
+  border: 5px solid #3a2418;
+  box-shadow: inset 0 0 40px #241008aa;
+}
+body.tv[data-theme-slug="spirit-forward"] .tv-set-bl,
+body.tv[data-theme-slug="spirit-forward"] .tv-set-br {
+  background-image: url("tv-sets/bottle.svg");
+  height: min(28vh, 180px);
+}
+body.tv[data-theme-slug="spirit-forward"] .tv-set-bottom {
+  height: 10px;
+  background: linear-gradient(#c46a38, #6a3018);
+  opacity: 0.55;
+  left: 8%;
+  right: 8%;
+  border-radius: 40% 40% 0 0;
+}
+
+/* —— Highball —— */
+body.tv[data-theme-slug="highball"] .tv-frame {
+  background-image: repeating-linear-gradient(90deg, transparent 0 18px, rgba(110,200,232,.08) 18px 19px);
+}
+body.tv[data-theme-slug="highball"] .tv-set-tl,
+body.tv[data-theme-slug="highball"] .tv-set-tr,
+body.tv[data-theme-slug="highball"] .tv-set-bl,
+body.tv[data-theme-slug="highball"] .tv-set-br {
+  background-image: url("tv-sets/ice.svg");
+  width: 80px;
+  height: 80px;
+  opacity: 0.7;
+}
+body.tv[data-theme-slug="highball"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(180,230,255,.45) 1.5px, transparent 2px);
+  background-size: 40px 90px;
+  animation: tv-bubbles 9s linear infinite;
+  opacity: 0.45;
+}
+@keyframes tv-bubbles {
+  from { background-position: 0 80px; }
+  to { background-position: 0 -80px; }
+}
+
+/* —— Sparkling —— */
+body.tv[data-theme-slug="sparkling"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(240,216,168,.7) 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(255,255,255,.45) 1px, transparent 1.5px);
+  background-size: 28px 70px, 42px 90px;
+  animation: tv-bubbles 11s linear infinite;
+  opacity: 0.5;
+}
+body.tv[data-theme-slug="sparkling"] .tv-set-tl,
+body.tv[data-theme-slug="sparkling"] .tv-set-tr {
+  background-image: url("../glassware/flute.svg");
+  width: 70px;
+  height: 110px;
+  opacity: 0.55;
+}
+
+/* —— Garden / Herbal —— */
+body.tv[data-theme-slug="garden-herbal"] .tv-set-tl,
+body.tv[data-theme-slug="garden-herbal"] .tv-set-tr {
+  background-image: url("tv-sets/leaf.svg");
+}
+body.tv[data-theme-slug="garden-herbal"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="garden-herbal"] .tv-set-bl,
+body.tv[data-theme-slug="garden-herbal"] .tv-set-br {
+  background-image: url("tv-sets/mint.svg");
+  width: 90px;
+  height: 90px;
+}
+body.tv[data-theme-slug="garden-herbal"] .tv-frame {
+  box-shadow: inset 0 0 0 3px rgba(79,160,106,.35);
+}
+
+/* —— Spicy & Smoky —— */
+body.tv[data-theme-slug="spicy-smoky"] .tv-set-bl,
+body.tv[data-theme-slug="spicy-smoky"] .tv-set-br {
+  background-image: url("tv-sets/chili.svg");
+}
+body.tv[data-theme-slug="spicy-smoky"] .tv-set-bottom {
+  height: 80px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,80,20,.28), transparent 70%);
+  filter: blur(2px);
+}
+body.tv[data-theme-slug="spicy-smoky"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 30%;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 40px,
+    rgba(255,120,40,.08) 40px 42px
+  );
+  animation: tv-ember 4s ease-in-out infinite alternate;
+}
+@keyframes tv-ember {
+  from { opacity: 0.4; }
+  to { opacity: 0.9; }
+}
+
+/* —— Coffee & Dessert —— */
+body.tv[data-theme-slug="coffee-dessert"] .tv-set-tl,
+body.tv[data-theme-slug="coffee-dessert"] .tv-set-tr {
+  background-image: url("tv-sets/cup.svg");
+  width: 100px;
+  height: 100px;
+}
+body.tv[data-theme-slug="coffee-dessert"] .tv-set-tr { transform: scaleX(-1); }
+body.tv[data-theme-slug="coffee-dessert"] .tv-set-top::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 8px;
+  height: 24px;
+  background:
+    radial-gradient(ellipse at 30% 80%, rgba(232,184,109,.25), transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(232,184,109,.2), transparent 50%);
+  animation: tv-steam 3.5s ease-in-out infinite;
+}
+@keyframes tv-steam {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-8px); opacity: 0.9; }
+}
+
+/* —— Bright Citrus —— */
+body.tv[data-theme-slug="bright-citrus"] .tv-header h1 {
+  text-shadow: 0 0 28px rgba(245, 225, 74, 0.35);
+}
+body.tv[data-theme-slug="bright-citrus"] .tv-set-tl { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(0deg); }
+body.tv[data-theme-slug="bright-citrus"] .tv-set-tr { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(80deg); }
+body.tv[data-theme-slug="bright-citrus"] .tv-set-bl { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(-15deg); }
+body.tv[data-theme-slug="bright-citrus"] .tv-set-br { background-image: url("tv-sets/citrus.svg"); filter: hue-rotate(40deg) saturate(1.2); }
+body.tv[data-theme-slug="bright-citrus"] .tv-set-tl,
+body.tv[data-theme-slug="bright-citrus"] .tv-set-tr,
+body.tv[data-theme-slug="bright-citrus"] .tv-set-bl,
+body.tv[data-theme-slug="bright-citrus"] .tv-set-br {
+  width: 88px; height: 88px;
+}
+
+/* —— Bitter —— */
+body.tv[data-theme-slug="bitter"] .tv-frame {
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 16px, rgba(255,80,60,.08) 16px 17px),
+    repeating-linear-gradient(-45deg, transparent 0 16px, rgba(255,80,60,.08) 16px 17px);
+}
+body.tv[data-theme-slug="bitter"] .tv-set-bl,
+body.tv[data-theme-slug="bitter"] .tv-set-br {
+  background-image: url("tv-sets/bottle.svg");
+  filter: hue-rotate(-15deg) saturate(1.4);
+}
+
+/* —— Jazzy —— */
+body.tv[data-theme-slug="jazzy"] .tv-set-bottom {
+  height: 22px;
+  background: repeating-linear-gradient(90deg,
+    #f4efe4 0 10px, #111 10px 14px, #f4efe4 14px 24px, #111 24px 28px,
+    #f4efe4 28px 38px, #111 38px 42px, #f4efe4 42px 62px, #111 62px 66px);
+  opacity: 0.85;
+}
+body.tv[data-theme-slug="jazzy"] .tv-set-top {
+  height: 16px;
+  background: repeating-linear-gradient(#0000 0 5px, rgba(232,184,109,.35) 5px 6px);
+  opacity: 0.6;
+}
+
+/* —— Summer Fresh —— */
+body.tv[data-theme-slug="summer-fresh"] .tv-set-top {
+  height: 70px;
+  background: radial-gradient(circle at 50% -10px, #ffe566 0 28px, transparent 30px);
+  opacity: 0.55;
+}
+body.tv[data-theme-slug="summer-fresh"] .tv-frame {
+  background-image: repeating-radial-gradient(circle at 50% 120%, rgba(110,200,232,.12) 0 2px, transparent 3px 28px);
+}
+
+/* —— Autumn Spice —— */
+body.tv[data-theme-slug="autumn-spice"] .tv-set-tl,
+body.tv[data-theme-slug="autumn-spice"] .tv-set-tr,
+body.tv[data-theme-slug="autumn-spice"] .tv-set-bl,
+body.tv[data-theme-slug="autumn-spice"] .tv-set-br {
+  background-image: url("tv-sets/maple.svg");
+  width: 72px;
+  height: 72px;
+}
+body.tv[data-theme-slug="autumn-spice"] .tv-set-tr { transform: rotate(20deg); }
+body.tv[data-theme-slug="autumn-spice"] .tv-set-bl { transform: rotate(-15deg); }
+body.tv[data-theme-slug="autumn-spice"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("tv-sets/maple.svg");
+  background-size: 28px;
+  background-repeat: repeat;
+  opacity: 0.06;
+  animation: tv-leaves 24s linear infinite;
+}
+@keyframes tv-leaves {
+  from { background-position: 0 0; }
+  to { background-position: 40px 80px; }
+}
+
+/* —— Winter Warm —— */
+body.tv[data-theme-slug="winter-warm"] .tv-set-tl,
+body.tv[data-theme-slug="winter-warm"] .tv-set-tr,
+body.tv[data-theme-slug="winter-warm"] .tv-set-bl,
+body.tv[data-theme-slug="winter-warm"] .tv-set-br {
+  background-image: url("tv-sets/snowflake.svg");
+  width: 70px;
+  height: 70px;
+  opacity: 0.55;
+}
+body.tv[data-theme-slug="winter-warm"] .tv-set-tl { background-image: url("tv-sets/cup.svg"); width: 90px; height: 90px; opacity: 0.85; }
+body.tv[data-theme-slug="winter-warm"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 1.5px);
+  background-size: 50px 70px;
+  animation: tv-snow 16s linear infinite;
+  opacity: 0.35;
+}
+@keyframes tv-snow {
+  from { background-position: 0 -40px; }
+  to { background-position: 30px 80px; }
+}
+
+/* —— Brunch —— */
+body.tv[data-theme-slug="brunch"] .tv-frame {
+  background-image: repeating-linear-gradient(0deg, transparent 0 10px, rgba(255,255,255,.03) 10px 11px);
+}
+body.tv[data-theme-slug="brunch"] .tv-set-tl,
+body.tv[data-theme-slug="brunch"] .tv-set-tr {
+  background-image: url("tv-sets/citrus.svg");
+  width: 72px;
+  height: 72px;
+  filter: hue-rotate(-10deg);
+}
+body.tv[data-theme-slug="brunch"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(240,216,168,.5) 1px, transparent 1.6px);
+  background-size: 36px 80px;
+  animation: tv-bubbles 10s linear infinite;
+  opacity: 0.35;
+}
+
+/* —— Easy —— */
+body.tv[data-theme-slug="easy"] .tv-frame {
+  border: 2px dashed rgba(232, 184, 109, 0.45);
+}
+
+/* —— Batch / Punch —— */
+body.tv[data-theme-slug="batch-punch"] .tv-set-bl,
+body.tv[data-theme-slug="batch-punch"] .tv-set-br {
+  background-image: url("tv-sets/punch.svg");
+  width: min(22vw, 160px);
+  height: min(16vh, 110px);
+}
+body.tv[data-theme-slug="batch-punch"] .tv-set-tl,
+body.tv[data-theme-slug="batch-punch"] .tv-set-tr {
+  background-image: url("tv-sets/citrus.svg");
+  width: 64px;
+  height: 64px;
+}
+
+/* —— Low-ABV —— */
+body.tv[data-theme-slug="low-abv"] .tv-set::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(180,220,200,.4) 1.2px, transparent 1.8px);
+  background-size: 32px 72px;
+  animation: tv-bubbles 12s linear infinite;
+  opacity: 0.4;
+}
+body.tv[data-theme-slug="low-abv"] .tv-set-tl,
+body.tv[data-theme-slug="low-abv"] .tv-set-tr {
+  background-image: url("tv-sets/mint.svg");
+  width: 80px;
+  height: 80px;
+  opacity: 0.7;
+}
+
+/* —— Featured ingredients —— */
+body.tv[data-theme-slug="featured"] .tv-frame {
+  box-shadow:
+    inset 0 0 80px rgba(232, 184, 109, 0.12),
+    0 0 0 1px rgba(232, 184, 109, 0.45);
+}
+body.tv[data-theme-slug="featured"] .tv-set-tl,
+body.tv[data-theme-slug="featured"] .tv-set-tr,
+body.tv[data-theme-slug="featured"] .tv-set-bl,
+body.tv[data-theme-slug="featured"] .tv-set-br {
+  background-image: url("tv-sets/star.svg");
+  width: 56px;
+  height: 56px;
+}
+body.tv[data-theme-slug="featured"] .tv-header h1 {
+  text-shadow: 0 0 32px rgba(232, 184, 109, 0.45);
+}
+
+/* Picker tiles: a tiny motif chip */
+.tv-theme-tile[data-theme-slug]::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: center / contain no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.tv-theme-tile { position: relative; }
+.tv-theme-tile[data-theme-slug="tiki-tropical"]::before { background-image: url("tv-sets/torch.svg"); }
+.tv-theme-tile[data-theme-slug="mexican-agave"]::before { background-image: url("tv-sets/agave.svg"); }
+.tv-theme-tile[data-theme-slug="italian-aperitivo"]::before { background-image: url("tv-sets/deco-fan.svg"); }
+.tv-theme-tile[data-theme-slug="mediterranean"]::before { background-image: url("tv-sets/olive.svg"); }
+.tv-theme-tile[data-theme-slug="asian-spice"]::before { background-image: url("tv-sets/lantern.svg"); }
+.tv-theme-tile[data-theme-slug="latin-american"]::before { background-image: url("tv-sets/guitar.svg"); }
+.tv-theme-tile[data-theme-slug="american-comfort"]::before { background-image: url("tv-sets/star.svg"); }
+.tv-theme-tile[data-theme-slug="classics"]::before { background-image: url("tv-sets/deco-fan.svg"); }
+.tv-theme-tile[data-theme-slug="sours"]::before { background-image: url("tv-sets/citrus.svg"); }
+.tv-theme-tile[data-theme-slug="spirit-forward"]::before { background-image: url("tv-sets/bottle.svg"); }
+.tv-theme-tile[data-theme-slug="highball"]::before { background-image: url("tv-sets/ice.svg"); }
+.tv-theme-tile[data-theme-slug="sparkling"]::before { background-image: url("../glassware/flute.svg"); }
+.tv-theme-tile[data-theme-slug="garden-herbal"]::before { background-image: url("tv-sets/leaf.svg"); }
+.tv-theme-tile[data-theme-slug="spicy-smoky"]::before { background-image: url("tv-sets/chili.svg"); }
+.tv-theme-tile[data-theme-slug="coffee-dessert"]::before { background-image: url("tv-sets/cup.svg"); }
+.tv-theme-tile[data-theme-slug="bright-citrus"]::before { background-image: url("tv-sets/citrus.svg"); }
+.tv-theme-tile[data-theme-slug="bitter"]::before { background-image: url("tv-sets/bottle.svg"); }
+.tv-theme-tile[data-theme-slug="jazzy"]::before { background-image: url("tv-sets/star.svg"); }
+.tv-theme-tile[data-theme-slug="summer-fresh"]::before { background-image: url("tv-sets/palm.svg"); }
+.tv-theme-tile[data-theme-slug="autumn-spice"]::before { background-image: url("tv-sets/maple.svg"); }
+.tv-theme-tile[data-theme-slug="winter-warm"]::before { background-image: url("tv-sets/snowflake.svg"); }
+.tv-theme-tile[data-theme-slug="brunch"]::before { background-image: url("tv-sets/citrus.svg"); }
+.tv-theme-tile[data-theme-slug="batch-punch"]::before { background-image: url("tv-sets/punch.svg"); }
+.tv-theme-tile[data-theme-slug="low-abv"]::before { background-image: url("tv-sets/mint.svg"); }
+.tv-theme-tile[data-theme-slug="featured"]::before { background-image: url("tv-sets/star.svg"); }

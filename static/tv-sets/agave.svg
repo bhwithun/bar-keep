@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <g fill="#7cb86a">
+    <path d="M40 72L36 8l4 4 4-4z"/>
+    <path d="M40 72L8 28l10 2z"/>
+    <path d="M40 72L72 28l-10 2z"/>
+    <path d="M40 72L14 48l8-2z"/>
+    <path d="M40 72L66 48l-8-2z"/>
+    <path d="M40 72L22 18l6 8z"/>
+    <path d="M40 72L58 18l-6 8z"/>
+  </g>
+  <circle cx="40" cy="70" r="5" fill="#c6e87a"/>
+</svg>
