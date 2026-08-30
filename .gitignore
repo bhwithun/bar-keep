@@ -4,6 +4,9 @@ __pycache__/
 *.egg-info/
 .Python
 .env
+# Local bar data (recipes, stock, Wi‑Fi settings) — never commit
+drinks.db
+*.db
 *.db-journal
 *.db-wal
 *.db-shm
