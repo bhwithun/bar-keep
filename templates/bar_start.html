@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Start with… · Bar</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" sizes="32x32">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-16x16.png') }}" sizes="16x16">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bar bar-start">
+  <div class="bar-sticky">
+    {% set nav_current = 'start' %}
+    {% set breadcrumbs = [
+      {"label": "Themes", "url": url_for("bar")},
+      {"label": "Start with…", "url": url_for("bar_start")},
+    ] %}
+    {% include "_site_chrome.html" %}
+    <header class="bar-header">
+      <div>
+        <h1>Start with…</h1>
+        <p class="muted">
+          Pick a bottle — see drinks you can make with it.
+          {{ makeable_with_count }} of {{ ingredient_count }} have something pourable now
+          · {{ on_hand_count }} on hand
+        </p>
+      </div>
+    </header>
+
+    {% if ingredient_count %}
+    <div class="name-filter" id="start-filter">
+      <label class="visually-hidden" for="start-filter-input">Filter bottles by name</label>
+      <div class="name-filter-row">
+        <input
+          id="start-filter-input"
+          type="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          placeholder="Filter bottles…"
+        >
+        <button type="button" class="btn ghost" id="start-filter-clear" hidden>Clear</button>
+      </div>
+      <p class="name-filter-status muted" id="start-filter-status" aria-live="polite">
+        <span id="start-filter-shown">{{ ingredient_count }}</span> of
+        {{ ingredient_count }} shown
+        · only on this phone
+      </p>
+      <p class="list-mode-toggle start-stock-toggle">
+        <button type="button" class="btn primary" id="start-show-all" aria-pressed="true">All bottles</button>
+        <button type="button" class="btn ghost" id="start-on-hand-only" aria-pressed="false">On hand only</button>
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <main class="ingredients-page start-page">
+    {% if ingredients %}
+    <ul class="filter-list filter-list-page start-ing-list">
+      {% for ing in ingredients %}
+      <li data-search="{{ (ing.name ~ ' ' ~ (ing.category or '')) | e }}"
+          data-on-hand="{{ '1' if ing.in_filter else '0' }}">
+        <a class="filter-chip start-ing-chip cat-{{ ing.cat_slug }} {% if ing.in_filter %}on{% else %}off{% endif %}{% if not ing.makeable_count %} empty{% endif %}"
+           href="{{ url_for('bar_ingredient', ingredient_id=ing.id) }}">
+          <span class="ing-icon" aria-hidden="true">
+            {% include ['ing_icons/' ~ ing.icon ~ '.svg', 'ing_icons/_default.svg'] %}
+          </span>
+          <span class="start-ing-copy">
+            <span class="ing-name">{{ ing.name }}</span>
+            <span class="start-ing-count">
+              {% if ing.makeable_count %}
+              {{ ing.makeable_count }} you can make
+              {% else %}
+              none on hand
+              {% endif %}
+              <span class="muted">· {{ ing.recipe_count }} total</span>
+            </span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="panel empty-panel">
+      <p>No ingredients on published recipes yet.</p>
+    </div>
+    {% endif %}
+    <div class="panel empty-panel" id="start-filter-empty" hidden>
+      <p>No bottles match that filter.</p>
+      <p class="muted">Try fewer letters, or clear the filter.</p>
+    </div>
+  </main>
+
+  <p class="footer-links">
+    <a href="{{ url_for('bar') }}">Themes</a>
+    ·
+    <a href="{{ url_for('bar_menu') }}">Full menu</a>
+    ·
+    <a href="{{ url_for('bar_ingredients') }}">What’s on hand?</a>
+  </p>
+
+  <script>
+    (function () {
+      var filterInput = document.getElementById('start-filter-input');
+      var filterClear = document.getElementById('start-filter-clear');
+      var filterShown = document.getElementById('start-filter-shown');
+      var filterEmpty = document.getElementById('start-filter-empty');
+      var showAllBtn = document.getElementById('start-show-all');
+      var onHandBtn = document.getElementById('start-on-hand-only');
+      var rows = Array.prototype.slice.call(
+        document.querySelectorAll('.start-ing-list > li')
+      );
+      var STORAGE_KEY = 'barStartFilter';
+      var STOCK_KEY = 'barStartOnHandOnly';
+      var onHandOnly = false;
+
+      function normalize(s) {
+        return String(s || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      }
+
+      function matches(query, hay) {
+        var q = normalize(query);
+        if (!q) return true;
+        hay = normalize(hay);
+        var compactHay = hay.replace(/ /g, '');
+        var tokens = q.split(' ').filter(Boolean);
+        for (var i = 0; i < tokens.length; i++) {
+          var tok = tokens[i];
+          if (hay.indexOf(tok) === -1 && compactHay.indexOf(tok) === -1) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function setStockMode(onlyOnHand) {
+        onHandOnly = !!onlyOnHand;
+        if (showAllBtn) {
+          showAllBtn.classList.toggle('primary', !onHandOnly);
+          showAllBtn.classList.toggle('ghost', onHandOnly);
+          showAllBtn.setAttribute('aria-pressed', onHandOnly ? 'false' : 'true');
+        }
+        if (onHandBtn) {
+          onHandBtn.classList.toggle('primary', onHandOnly);
+          onHandBtn.classList.toggle('ghost', !onHandOnly);
+          onHandBtn.setAttribute('aria-pressed', onHandOnly ? 'true' : 'false');
+        }
+        try {
+          if (onHandOnly) sessionStorage.setItem(STOCK_KEY, '1');
+          else sessionStorage.removeItem(STOCK_KEY);
+        } catch (err) {}
+        applyFilter();
+      }
+
+      function applyFilter() {
+        var q = filterInput ? filterInput.value : '';
+        var n = 0;
+        rows.forEach(function (row) {
+          var stockOk = !onHandOnly || row.getAttribute('data-on-hand') === '1';
+          var ok = stockOk && matches(q, row.getAttribute('data-search') || '');
+          row.hidden = !ok;
+          if (ok) n++;
+        });
+        if (filterShown) filterShown.textContent = String(n);
+        if (filterEmpty) filterEmpty.hidden = n !== 0;
+        if (filterClear) filterClear.hidden = !normalize(q);
+        try {
+          if (normalize(q)) sessionStorage.setItem(STORAGE_KEY, q);
+          else sessionStorage.removeItem(STORAGE_KEY);
+        } catch (err) {}
+      }
+
+      if (filterInput) {
+        try {
+          var saved = sessionStorage.getItem(STORAGE_KEY);
+          if (saved) filterInput.value = saved;
+          if (sessionStorage.getItem(STOCK_KEY) === '1') onHandOnly = true;
+        } catch (err) {}
+        filterInput.addEventListener('input', applyFilter);
+        if (filterClear) {
+          filterClear.addEventListener('click', function () {
+            filterInput.value = '';
+            applyFilter();
+            filterInput.focus();
+          });
+        }
+      }
+      if (showAllBtn) {
+        showAllBtn.addEventListener('click', function () { setStockMode(false); });
+      }
+      if (onHandBtn) {
+        onHandBtn.addEventListener('click', function () { setStockMode(true); });
+      }
+      setStockMode(onHandOnly);
+    })();
+  </script>
+</body>
+</html>

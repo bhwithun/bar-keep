@@ -17,8 +17,18 @@
       {% if palette_style %}style="{{ palette_style }}"{% endif %}>
   {% set featured_names = featured_names|default([]) %}
   {% set list_kind = list_kind|default('') %}
+  {% set ingredient = ingredient|default(none) %}
   {% set list_title = list_title|default('') %}
   {% set list_endpoint = list_endpoint|default(none) %}
+  {% if list_kind %}
+    {% set recipe_ctx = {'list': list_kind} %}
+  {% elif ingredient %}
+    {% set recipe_ctx = {'ingredient': ingredient.id} %}
+  {% elif theme %}
+    {% set recipe_ctx = {'theme': theme.slug} %}
+  {% else %}
+    {% set recipe_ctx = {} %}
+  {% endif %}
   {% include "_site_chrome.html" %}
   <header class="recipe-identity">
     <div class="recipe-identity-copy">
@@ -27,7 +37,7 @@
         {{ recipe.category }}
         {% if recipe.glassware %} · {{ recipe.glassware }}{% endif %}
       </p>
-      <form class="star-rate" method="post" action="{% if list_kind %}{{ url_for('rate_recipe', recipe_id=recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('rate_recipe', recipe_id=recipe.id, theme=theme.slug) }}{% else %}{{ url_for('rate_recipe', recipe_id=recipe.id) }}{% endif %}">
+      <form class="star-rate" method="post" action="{{ url_for('rate_recipe', recipe_id=recipe.id, **recipe_ctx) }}">
         <p class="rating-prompt visually-hidden" id="rating-prompt">
           {% if my_stars %}You rated this {{ my_stars }}/5 · tap to change{% else %}Tap a star to rate{% endif %}
         </p>
@@ -53,7 +63,7 @@
         height="72"
       >
       <form class="show-on-tv-form" method="post"
-            action="{% if list_kind %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id, theme=theme.slug) }}{% else %}{{ url_for('show_recipe_on_tv', recipe_id=recipe.id) }}{% endif %}">
+            action="{{ url_for('show_recipe_on_tv', recipe_id=recipe.id, **recipe_ctx) }}">
         <button type="submit"
                 class="btn sm ghost show-on-tv{% if tv_showing %} is-live{% endif %}"
                 id="show-on-tv"

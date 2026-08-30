@@ -1889,6 +1889,52 @@ body.admin > .site-chrome {
   height: 100%;
 }
 
+/* Start with… picker — chips are links, not stock toggles */
+a.start-ing-chip {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  min-height: 52px;
+}
+
+a.start-ing-chip .start-ing-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+a.start-ing-chip .ing-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+a.start-ing-chip .start-ing-count {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+a.start-ing-chip.empty {
+  opacity: 0.72;
+}
+
+a.start-ing-chip.off {
+  opacity: 0.78;
+}
+
+a.start-ing-chip:hover {
+  border-color: color-mix(in srgb, var(--ing, var(--accent)) 70%, var(--border));
+}
+
+.start-stock-toggle {
+  margin-top: 0.55rem;
+}
+
 .list-heading {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;

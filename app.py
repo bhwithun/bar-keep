@@ -1854,19 +1854,41 @@ def fetch_ingredients():
     ).fetchall()
 
 
-def fetch_makeable_recipes(theme_id=None, featured_ingredients=False):
-    extra = ""
-    params = []
+def _recipe_scope_sql(theme_id=None, featured_ingredients=False, ingredient_id=None):
+    """Extra WHERE clause + params to scope recipes by theme, featured, or ingredient."""
     if featured_ingredients:
-        extra = f"AND {_featured_recipe_sql()}"
-    elif theme_id is not None:
-        extra = """
+        return f"AND {_featured_recipe_sql()}", []
+    if ingredient_id is not None:
+        return (
+            """
+          AND EXISTS (
+            SELECT 1 FROM recipe_ingredients ri_ing
+            WHERE ri_ing.recipe_id = r.id AND ri_ing.ingredient_id = ?
+          )
+        """,
+            [ingredient_id],
+        )
+    if theme_id is not None:
+        return (
+            """
           AND EXISTS (
             SELECT 1 FROM recipe_themes rt
             WHERE rt.recipe_id = r.id AND rt.theme_id = ?
           )
-        """
-        params.append(theme_id)
+        """,
+            [theme_id],
+        )
+    return "", []
+
+
+def fetch_makeable_recipes(
+    theme_id=None, featured_ingredients=False, ingredient_id=None
+):
+    extra, params = _recipe_scope_sql(
+        theme_id=theme_id,
+        featured_ingredients=featured_ingredients,
+        ingredient_id=ingredient_id,
+    )
     covered = _ingredient_covered_sql("i")
     return get_db().execute(
         f"""
@@ -1888,19 +1910,14 @@ def fetch_makeable_recipes(theme_id=None, featured_ingredients=False):
     ).fetchall()
 
 
-def fetch_published_recipes(theme_id=None, featured_ingredients=False):
-    extra = ""
-    params = []
-    if featured_ingredients:
-        extra = f"AND {_featured_recipe_sql()}"
-    elif theme_id is not None:
-        extra = """
-          AND EXISTS (
-            SELECT 1 FROM recipe_themes rt
-            WHERE rt.recipe_id = r.id AND rt.theme_id = ?
-          )
-        """
-        params.append(theme_id)
+def fetch_published_recipes(
+    theme_id=None, featured_ingredients=False, ingredient_id=None
+):
+    extra, params = _recipe_scope_sql(
+        theme_id=theme_id,
+        featured_ingredients=featured_ingredients,
+        ingredient_id=ingredient_id,
+    )
     return get_db().execute(
         f"""
         SELECT r.*
@@ -1911,6 +1928,70 @@ def fetch_published_recipes(theme_id=None, featured_ingredients=False):
         """,
         params,
     ).fetchall()
+
+
+def fetch_ingredient(ingredient_id):
+    return (
+        get_db()
+        .execute("SELECT * FROM ingredients WHERE id = ?", (ingredient_id,))
+        .fetchone()
+    )
+
+
+def fetch_start_ingredients():
+    """Ingredients used in published recipes, with makeable drink counts."""
+    covered = _ingredient_covered_sql("i_cov")
+    rows = get_db().execute(
+        f"""
+        SELECT
+            i.id,
+            i.name,
+            i.category,
+            i.in_filter,
+            i.featured,
+            (
+                SELECT COUNT(*)
+                FROM recipes r
+                WHERE r.published = 1
+                  AND EXISTS (
+                    SELECT 1 FROM recipe_ingredients ri0
+                    WHERE ri0.recipe_id = r.id AND ri0.ingredient_id = i.id
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM recipe_ingredients ri
+                    JOIN ingredients i_cov ON i_cov.id = ri.ingredient_id
+                    WHERE ri.recipe_id = r.id
+                      AND ri.necessary = 1
+                      AND NOT {covered}
+                  )
+            ) AS makeable_count,
+            (
+                SELECT COUNT(*)
+                FROM recipes r
+                WHERE r.published = 1
+                  AND EXISTS (
+                    SELECT 1 FROM recipe_ingredients ri0
+                    WHERE ri0.recipe_id = r.id AND ri0.ingredient_id = i.id
+                  )
+            ) AS recipe_count
+        FROM ingredients i
+        WHERE EXISTS (
+            SELECT 1
+            FROM recipe_ingredients ri
+            JOIN recipes r ON r.id = ri.recipe_id
+            WHERE ri.ingredient_id = i.id AND r.published = 1
+        )
+        ORDER BY i.in_filter DESC, i.name COLLATE NOCASE ASC
+        """
+    ).fetchall()
+    ingredients = []
+    for row in rows:
+        item = dict(row)
+        item["icon"] = icon_for_ingredient(item["name"], item.get("category") or "Other")
+        item["cat_slug"] = category_slug(item.get("category") or "Other")
+        ingredients.append(item)
+    return ingredients
 
 
 def fetch_recent_recipes():
@@ -2491,13 +2572,16 @@ def parse_list_kind():
     return kind if kind in GUEST_LISTS else None
 
 
-def _render_bar(theme=None, include_unmakeable=False, list_kind=None):
+def _render_bar(theme=None, include_unmakeable=False, list_kind=None, ingredient=None):
     """Handheld recipe list: makeable drinks, or the whole published set."""
     featured = _theme_is_featured(theme)
     theme_id = None if featured else (theme["id"] if theme is not None else None)
+    ingredient_id = ingredient["id"] if ingredient is not None else None
     list_meta = GUEST_LISTS.get(list_kind) if list_kind else None
     makeable = fetch_makeable_recipes(
-        theme_id=theme_id, featured_ingredients=featured
+        theme_id=theme_id,
+        featured_ingredients=featured,
+        ingredient_id=ingredient_id,
     )
     makeable_ids = {r["id"] for r in makeable}
     if list_meta:
@@ -2515,7 +2599,9 @@ def _render_bar(theme=None, include_unmakeable=False, list_kind=None):
         makeable_count = sum(1 for r in published if r["id"] in makeable_ids)
     else:
         published = fetch_published_recipes(
-            theme_id=theme_id, featured_ingredients=featured
+            theme_id=theme_id,
+            featured_ingredients=featured,
+            ingredient_id=ingredient_id,
         )
         recipes = published if include_unmakeable else makeable
         makeable_count = len(makeable)
@@ -2543,7 +2629,7 @@ def _render_bar(theme=None, include_unmakeable=False, list_kind=None):
     ratings = recipe_rating_summaries([r["id"] for r in recipes])
     for card in cards:
         card["rating"] = ratings.get(card["recipe"]["id"])
-    if not list_meta:
+    if not list_meta and ingredient is None:
         remember_tv_board(tv_board_for_theme(theme))
     if list_meta:
         list_title = list_meta["title"]
@@ -2554,6 +2640,20 @@ def _render_bar(theme=None, include_unmakeable=False, list_kind=None):
         breadcrumbs = [
             {"label": "Themes", "url": url_for("bar")},
             {"label": list_title, "url": url_for(list_endpoint)},
+        ]
+    elif ingredient is not None:
+        list_title = ingredient["name"]
+        list_blurb = "Drinks that use this bottle"
+        list_endpoint = None
+        nav_current = "start"
+        list_empty = "No published drinks use this ingredient yet."
+        breadcrumbs = [
+            {"label": "Themes", "url": url_for("bar")},
+            {"label": "Start with…", "url": url_for("bar_start")},
+            {
+                "label": ingredient["name"],
+                "url": url_for("bar_ingredient", ingredient_id=ingredient["id"]),
+            },
         ]
     else:
         list_title = theme["name"] if theme else "Full menu"
@@ -2583,6 +2683,7 @@ def _render_bar(theme=None, include_unmakeable=False, list_kind=None):
             on_hand_count=on_hand,
             ingredient_count=total_ings,
             theme=theme,
+            ingredient=ingredient,
             include_unmakeable=include_unmakeable,
             palette_style=palette_style(theme["slug"]) if theme else "",
             featured_names=featured_ingredient_names(),
@@ -2690,6 +2791,56 @@ def bar_ingredients():
     )
 
 
+@app.route("/guest/start")
+def bar_start():
+    """Pick one ingredient, then see drinks that use it."""
+    ingredients = fetch_start_ingredients()
+    on_hand = sum(1 for i in ingredients if i["in_filter"])
+    makeable_with = sum(1 for i in ingredients if i["makeable_count"])
+    return render_template(
+        "bar_start.html",
+        ingredients=ingredients,
+        on_hand_count=on_hand,
+        ingredient_count=len(ingredients),
+        makeable_with_count=makeable_with,
+    )
+
+
+@app.route("/guest/ingredient/<int:ingredient_id>")
+def bar_ingredient(ingredient_id):
+    """Drinks that use a single ingredient (makeable first)."""
+    row = fetch_ingredient(ingredient_id)
+    if not row:
+        flash("Ingredient not found.", "error")
+        return redirect(url_for("bar_start"))
+    ingredient = dict(row)
+    ingredient["icon"] = icon_for_ingredient(
+        ingredient["name"], ingredient.get("category") or "Other"
+    )
+    ingredient["cat_slug"] = category_slug(ingredient.get("category") or "Other")
+    published = fetch_published_recipes(ingredient_id=ingredient_id)
+    if not published:
+        flash(f"No published drinks use {ingredient['name']}.", "error")
+        return redirect(url_for("bar_start"))
+    return _render_bar(
+        ingredient=ingredient, include_unmakeable=_wants_all_recipes()
+    )
+
+
+def _parse_ingredient_arg():
+    raw = (request.args.get("ingredient") or "").strip()
+    if not raw:
+        return None
+    try:
+        ingredient_id = int(raw)
+    except ValueError:
+        return None
+    row = fetch_ingredient(ingredient_id)
+    if not row:
+        return None
+    return dict(row)
+
+
 @app.route("/guest/recipe/<int:recipe_id>")
 def recipe_detail(recipe_id):
     recipe = fetch_recipe(recipe_id)
@@ -2697,10 +2848,15 @@ def recipe_detail(recipe_id):
     theme = fetch_theme_by_slug(theme_slug) if theme_slug else None
     list_kind = parse_list_kind()
     list_meta = GUEST_LISTS.get(list_kind)
+    ingredient = _parse_ingredient_arg()
     if not recipe:
         flash("Recipe not found.", "error")
         if list_meta:
             return redirect(url_for(list_meta["endpoint"]))
+        if ingredient:
+            return redirect(
+                url_for("bar_ingredient", ingredient_id=ingredient["id"])
+            )
         if theme:
             return redirect(url_for("bar_theme", slug=theme["slug"]))
         return redirect(url_for("bar_menu"))
@@ -2712,6 +2868,8 @@ def recipe_detail(recipe_id):
     list_endpoint = list_meta["endpoint"] if list_meta else None
     if list_meta:
         return_url = url_for(list_endpoint)
+    elif ingredient:
+        return_url = url_for("bar_ingredient", ingredient_id=ingredient["id"])
     elif theme:
         return_url = (
             url_for("bar_featured")
@@ -2729,6 +2887,24 @@ def recipe_detail(recipe_id):
                 "label": recipe["name"],
                 "url": url_for(
                     "recipe_detail", recipe_id=recipe_id, list=list_kind
+                ),
+            },
+        ]
+    elif ingredient:
+        nav_current = "start"
+        breadcrumbs = [
+            {"label": "Themes", "url": url_for("bar")},
+            {"label": "Start with…", "url": url_for("bar_start")},
+            {
+                "label": ingredient["name"],
+                "url": url_for("bar_ingredient", ingredient_id=ingredient["id"]),
+            },
+            {
+                "label": recipe["name"],
+                "url": url_for(
+                    "recipe_detail",
+                    recipe_id=recipe_id,
+                    ingredient=ingredient["id"],
                 ),
             },
         ]
@@ -2766,6 +2942,7 @@ def recipe_detail(recipe_id):
             rating=summary,
             my_stars=device_vote(recipe_id, device_id),
             theme=theme,
+            ingredient=ingredient,
             palette_style=palette_style(theme["slug"]) if theme else "",
             featured_names=featured_ingredient_names(),
             tv_showing=_recipe_is_on_tv(recipe_id),
@@ -2813,6 +2990,16 @@ def bar_theme_legacy(slug):
 @app.route("/bar/ingredients")
 def bar_ingredients_legacy():
     return redirect_canonical("bar_ingredients")
+
+
+@app.route("/bar/start")
+def bar_start_legacy():
+    return redirect_canonical("bar_start")
+
+
+@app.route("/bar/ingredient/<int:ingredient_id>")
+def bar_ingredient_legacy(ingredient_id):
+    return redirect_canonical("bar_ingredient", ingredient_id=ingredient_id)
 
 
 @app.route("/bar/recipe/<int:recipe_id>")
@@ -2897,6 +3084,15 @@ def _redirect_recipe_detail(recipe_id):
     if list_kind:
         return redirect(
             url_for("recipe_detail", recipe_id=recipe_id, list=list_kind)
+        )
+    ingredient = _parse_ingredient_arg()
+    if ingredient:
+        return redirect(
+            url_for(
+                "recipe_detail",
+                recipe_id=recipe_id,
+                ingredient=ingredient["id"],
+            )
         )
     theme_slug = (request.args.get("theme") or "").strip()
     if theme_slug:

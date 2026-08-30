@@ -14,10 +14,24 @@
 <body class="bar{% if theme %} bar-theme{% endif %}"{% if palette_style %} style="{{ palette_style }}"{% endif %}>
   {% set featured_names = featured_names|default([]) %}
   {% set list_kind = list_kind|default('') %}
+  {% set ingredient = ingredient|default(none) %}
   {% set list_title = list_title|default(theme.name if theme else 'Full menu') %}
   {% set list_blurb = list_blurb|default('') %}
   {% set list_endpoint = list_endpoint|default(none) %}
   {% set list_empty = list_empty|default('') %}
+  {% if list_endpoint %}
+    {% set makeable_href = url_for(list_endpoint) %}
+    {% set show_all_href = url_for(list_endpoint, all=1) %}
+  {% elif ingredient %}
+    {% set makeable_href = url_for('bar_ingredient', ingredient_id=ingredient.id) %}
+    {% set show_all_href = url_for('bar_ingredient', ingredient_id=ingredient.id, all=1) %}
+  {% elif theme %}
+    {% set makeable_href = url_for('bar_theme', slug=theme.slug) %}
+    {% set show_all_href = url_for('bar_theme', slug=theme.slug, all=1) %}
+  {% else %}
+    {% set makeable_href = url_for('bar_menu') %}
+    {% set show_all_href = url_for('bar_menu', all=1) %}
+  {% endif %}
   <div class="bar-sticky">
     {% include "_site_chrome.html" %}
     <header class="bar-header">
@@ -26,7 +40,7 @@
         <p class="muted">
           {% if list_blurb %}{{ list_blurb }} · {% endif %}
           {% if include_unmakeable %}
-          {{ makeable_count }} you can make · {{ published_count }} in {% if list_kind %}this list{% elif theme %}this theme{% else %}the full menu{% endif %}
+          {{ makeable_count }} you can make · {{ published_count }} in {% if list_kind %}this list{% elif ingredient %}this bottle{% elif theme %}this theme{% else %}the full menu{% endif %}
           {% else %}
           {{ makeable_count }} you can make
           {% if published_count > makeable_count %}
@@ -37,11 +51,11 @@
         </p>
         <p class="list-mode-toggle">
           {% if include_unmakeable %}
-          <a class="btn ghost" href="{% if list_endpoint %}{{ url_for(list_endpoint) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug) }}{% else %}{{ url_for('bar_menu') }}{% endif %}">Makeable only</a>
+          <a class="btn ghost" href="{{ makeable_href }}">Makeable only</a>
           <span class="btn primary" aria-current="page">Show all</span>
           {% else %}
           <span class="btn primary" aria-current="page">Makeable only</span>
-          <a class="btn ghost" href="{% if list_endpoint %}{{ url_for(list_endpoint, all=1) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug, all=1) }}{% else %}{{ url_for('bar_menu', all=1) }}{% endif %}">Show all</a>
+          <a class="btn ghost" href="{{ show_all_href }}">Show all</a>
           {% endif %}
         </p>
       </div>
@@ -87,6 +101,8 @@
     <div class="panel empty-panel">
       {% if not published_count and list_empty %}
       <p>{{ list_empty }}</p>
+      {% elif ingredient %}
+      <p>Nothing with {{ ingredient.name }} matches the current ingredients.</p>
       {% elif theme %}
       <p>Nothing in {{ theme.name }} matches the current ingredients.</p>
       {% elif list_kind %}
@@ -97,20 +113,24 @@
       {% if published_count %}
       <p class="muted">Show all to see grayed-out drinks and what you’re missing.</p>
       {% elif not list_empty %}
-      <p class="muted">Mark more items on hand, or pick another theme.</p>
+      <p class="muted">Mark more items on hand, or pick another starting bottle.</p>
       {% endif %}
       <p style="margin-top: 1rem">
         {% if published_count %}
-        <a class="btn primary" href="{% if list_endpoint %}{{ url_for(list_endpoint, all=1) }}{% elif theme %}{{ url_for('bar_theme', slug=theme.slug, all=1) }}{% else %}{{ url_for('bar_menu', all=1) }}{% endif %}">Show all</a>
+        <a class="btn primary" href="{{ show_all_href }}">Show all</a>
         {% endif %}
+        {% if ingredient %}
+        <a class="btn ghost" href="{{ url_for('bar_start') }}">Pick another bottle</a>
+        {% else %}
         <a class="btn ghost" href="{{ url_for('bar_ingredients') }}">Edit ingredients</a>
+        {% endif %}
       </p>
     </div>
     {% else %}
     <div class="recipe-cards" id="recipe-cards"{% if list_kind %} data-preserve-order="1"{% endif %}>
       {% for card in cards %}
       <a class="recipe-card{% if not card.makeable %} unmakeable{% endif %}"
-         href="{% if list_kind %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, list=list_kind) }}{% elif theme %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, theme=theme.slug) }}{% else %}{{ url_for('recipe_detail', recipe_id=card.recipe.id) }}{% endif %}"
+         href="{% if list_kind %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, list=list_kind) }}{% elif ingredient %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, ingredient=ingredient.id) }}{% elif theme %}{{ url_for('recipe_detail', recipe_id=card.recipe.id, theme=theme.slug) }}{% else %}{{ url_for('recipe_detail', recipe_id=card.recipe.id) }}{% endif %}"
          data-rank="{{ loop.index }}"
          data-search="{{ (card.recipe.name ~ ' ' ~ (card.recipe.tags or '') ~ ' ' ~ (card.recipe.category or '') ~ ' ' ~ (card.missing | join(' '))) | e }}">
         <div class="recipe-card-top">
@@ -175,6 +195,8 @@
 
   <p class="footer-links">
     <a href="{{ url_for('bar') }}">Themes</a>
+    ·
+    <a href="{{ url_for('bar_start') }}">Start with…</a>
     ·
     <a href="{{ url_for('bar_menu') }}">Full menu</a>
     ·
