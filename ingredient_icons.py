@@ -120,6 +120,7 @@ ICON_BY_NAME = {
     "Peach liqueur": "peach",
     "Peach purée": "peach",
     "Peach schnapps": "peach",
+    "Peach slice": "peach",
     "Pear liqueur": "pear",
     "Pear slice": "pear",
     "Peychaud's bitters": "bitters",

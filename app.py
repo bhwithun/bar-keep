@@ -1747,6 +1747,17 @@ def inject_glassware_helpers():
     }
 
 
+@app.context_processor
+def inject_todays_theme_nav():
+    """Mark Guest → Today's theme active when viewing the TV's current theme."""
+    try:
+        target = guest_path_for_current_tv_theme()
+    except RuntimeError:
+        target = None
+    active = bool(target and request.path == target)
+    return {"todays_theme_active": active}
+
+
 def get_setting(key, default=""):
     row = get_db().execute(
         "SELECT value FROM settings WHERE key = ?", (key,)
@@ -2232,6 +2243,19 @@ def tv_board_path(board):
     if board.startswith("theme:"):
         return url_for("display_theme", slug=board.split(":", 1)[1])
     return url_for("display")
+
+
+def guest_path_for_current_tv_theme():
+    """Guest menu path for the TV's themed board, or None if none is set."""
+    raw = (get_setting(SETTING_TV_BOARD) or "").strip()
+    if not raw:
+        return None
+    board = resolve_tv_board(raw)
+    if board == "featured":
+        return url_for("bar_featured")
+    if board.startswith("theme:"):
+        return url_for("bar_theme", slug=board.split(":", 1)[1])
+    return None
 
 
 def tv_menu_context(theme=None):
@@ -2725,6 +2749,17 @@ def bar():
     )
 
 
+@app.route("/guest/todays-theme")
+@app.route("/guest/today")
+def bar_todays_theme():
+    """Jump to the guest recipes for the theme the TV is following."""
+    target = guest_path_for_current_tv_theme()
+    if target:
+        return redirect(target)
+    flash("No theme on the TV right now — pick one.", "ok")
+    return redirect(url_for("bar"))
+
+
 def _wants_all_recipes():
     return request.args.get("all", "").lower() in ("1", "true", "yes")
 
@@ -2988,6 +3023,12 @@ def bar_top_legacy():
 @app.route("/bar/featured")
 def bar_featured_legacy():
     return redirect_canonical("bar_featured")
+
+
+@app.route("/bar/today")
+@app.route("/bar/todays-theme")
+def bar_todays_theme_legacy():
+    return redirect_canonical("bar_todays_theme")
 
 
 @app.route("/bar/theme/<slug>")

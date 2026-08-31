@@ -1,6 +1,6 @@
 {# Global nav + breadcrumbs. Set nav_current and breadcrumbs before including. #}
 {% set _cur = nav_current|default('') %}
-{% set _bar = _cur in ['bar', 'bar-menu', 'bar-theme', 'bar-recent', 'bar-top', 'onhand', 'start'] %}
+{% set _bar = _cur in ['bar', 'bar-menu', 'bar-theme', 'bar-recent', 'bar-top', 'onhand', 'start', 'today'] %}
 {% set _menu = _cur in ['tv', 'tv-themes', 'tv-theme', 'stock'] %}
 {% set _admin = _cur in ['admin', 'admin-recipes', 'admin-inventory', 'admin-substitutes', 'admin-settings'] %}
 <div class="site-chrome">
@@ -9,6 +9,7 @@
       <button type="button" class="site-tool site-drop-btn{% if _bar %} active{% endif %}"
               aria-expanded="false" aria-haspopup="true">Guest</button>
       <div class="site-drop-menu" role="menu">
+        <a role="menuitem" href="{{ url_for('bar_todays_theme') }}"{% if todays_theme_active|default(false) or _cur == 'today' %} class="active" aria-current="page"{% endif %}>Today's theme</a>
         <a role="menuitem" href="{{ url_for('bar') }}"{% if _cur == 'bar' %} class="active" aria-current="page"{% endif %}>Themed Menus</a>
         <a role="menuitem" href="{{ url_for('bar_start') }}"{% if _cur == 'start' %} class="active" aria-current="page"{% endif %}>Start with…</a>
         <a role="menuitem" href="{{ url_for('bar_menu') }}"{% if _cur == 'bar-menu' %} class="active" aria-current="page"{% endif %}>Full Menu</a>
