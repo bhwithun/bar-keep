@@ -46,6 +46,8 @@ SETTING_PUBLIC_BASE_URL = "public_base_url"  # e.g. http://192.168.1.10
 SETTING_BAR_NAME = "bar_name"
 SETTING_TV_BOARD = "tv_board"
 DEFAULT_BAR_NAME = "The Raven"
+# How long a "Show on TV" pin stays if nobody finishes or dismisses it.
+TV_SHOW_TTL_SECONDS = 15 * 60
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("DRINKS_SECRET_KEY", "change-me-in-production")
@@ -2479,6 +2481,9 @@ def _tv_show_is_active(row):
         return False
     if int(row["dismissed"] or 0):
         return False
+    shown_at = int(row["shown_at"] or 0)
+    if shown_at and (time.time() - shown_at) >= TV_SHOW_TTL_SECONDS:
+        return False
     made = get_db().execute(
         """
         SELECT 1 FROM made_drinks
@@ -2504,6 +2509,7 @@ def _tv_show_payload(row):
         for line in lines
     ]
     shown_at = int(row["shown_at"] or 0)
+    expires_at = shown_at + TV_SHOW_TTL_SECONDS if shown_at else 0
     return {
         "id": row["id"],
         "recipe_id": row["recipe_id"],
@@ -2512,6 +2518,8 @@ def _tv_show_payload(row):
         "glassware": row["glassware"] or "",
         "icon": glassware_icon_url(row["glassware"], row["category"]),
         "shown_at": shown_at,
+        "ttl_seconds": TV_SHOW_TTL_SECONDS,
+        "expires_at": expires_at,
         "ingredients": ingredients,
     }
 
@@ -2534,7 +2542,7 @@ def tv_follow():
 @app.route("/tv/show")
 @app.route("/tv/live/show")
 def tv_show():
-    """Current recipe pinned to the TV until made, dismissed, or replaced."""
+    """Current recipe pinned to the TV until made, dismissed, replaced, or TTL."""
     row = _latest_tv_show_row()
     if not _tv_show_is_active(row):
         resp = jsonify(id=None)

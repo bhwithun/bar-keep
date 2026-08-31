@@ -821,6 +821,66 @@ a.tv-qr-link:hover {
   transform: translateX(0);
 }
 
+.tv-recipe-ttl {
+  flex-shrink: 0;
+  height: 0.45rem;
+  margin: -1.1rem -1.15rem 0.15rem -1.25rem;
+  overflow: hidden;
+  border-radius: 0 15px 0 0;
+  /* Revealed track: diagonal “marching ants” under the receding fill */
+  background-color: color-mix(in srgb, var(--bg-card) 35%, rgba(10, 14, 18, 0.92));
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--accent) 78%, #fff) 0 7px,
+    color-mix(in srgb, var(--accent) 22%, rgba(10, 14, 18, 0.95)) 7px 14px
+  );
+  background-size: 20px 20px;
+  animation: tv-recipe-ttl-ants 0.65s linear infinite;
+}
+
+.tv-recipe-ttl-bar {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(1);
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 70%, #f0c14a),
+    var(--accent)
+  );
+  box-shadow: 2px 0 0 color-mix(in srgb, var(--bg-card) 55%, transparent);
+  will-change: transform;
+}
+
+.tv-recipe-ttl.is-urgent {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, #e85d4c 85%, #fff) 0 7px,
+    color-mix(in srgb, #e85d4c 28%, rgba(10, 14, 18, 0.95)) 7px 14px
+  );
+  animation-duration: 0.4s;
+}
+
+.tv-recipe-ttl.is-urgent .tv-recipe-ttl-bar {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #e85d4c 55%, var(--accent)),
+    #e85d4c
+  );
+}
+
+@keyframes tv-recipe-ttl-ants {
+  to {
+    background-position: 20px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-recipe-ttl {
+    animation: none;
+  }
+}
+
 .tv-recipe-head {
   display: flex;
   align-items: center;

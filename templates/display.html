@@ -145,6 +145,15 @@
   </aside>
 
   <aside class="tv-recipe-tab" id="tv-recipe-tab" hidden>
+    <div class="tv-recipe-ttl"
+         id="tv-recipe-ttl"
+         role="progressbar"
+         aria-label="Time left on TV"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-valuenow="100">
+      <div class="tv-recipe-ttl-bar" id="tv-recipe-ttl-bar"></div>
+    </div>
     <header class="tv-recipe-head">
       <img class="tv-recipe-icon" id="tv-recipe-icon" alt="" width="48" height="48">
       <div class="tv-recipe-head-copy">
@@ -656,6 +665,8 @@
       var glassEl = document.getElementById('tv-recipe-glass');
       var ingsEl = document.getElementById('tv-recipe-ings');
       var methodEl = document.getElementById('tv-recipe-method');
+      var ttlEl = document.getElementById('tv-recipe-ttl');
+      var ttlBar = document.getElementById('tv-recipe-ttl-bar');
       if (!tab || !nameEl || !ingsEl || !methodEl) return;
 
       function placeTab() {
@@ -680,7 +691,59 @@
 
       var lastShowId = null;
       var slideTimer = null;
+      var ttlHideTimer = null;
+      var ttlUrgentTimer = null;
       var SLIDE_MS = 700;
+      var URGENT_MS = 120000;
+
+      function clearTtlTimers() {
+        if (ttlHideTimer) {
+          clearTimeout(ttlHideTimer);
+          ttlHideTimer = null;
+        }
+        if (ttlUrgentTimer) {
+          clearTimeout(ttlUrgentTimer);
+          ttlUrgentTimer = null;
+        }
+      }
+
+      function ttlTiming(data) {
+        var ttlMs = Math.max(1, Number(data.ttl_seconds || 900) * 1000);
+        var shownAt = Number(data.shown_at || 0) * 1000;
+        var expiresAt = Number(data.expires_at || 0) * 1000;
+        if (!expiresAt && shownAt) expiresAt = shownAt + ttlMs;
+        if (!expiresAt) expiresAt = Date.now() + ttlMs;
+        var remaining = Math.max(0, expiresAt - Date.now());
+        return { ttlMs: ttlMs, remaining: remaining, expiresAt: expiresAt };
+      }
+
+      function armTtlBar(data) {
+        if (!ttlEl || !ttlBar) return;
+        clearTtlTimers();
+        var timing = ttlTiming(data);
+        var pct = Math.max(0, Math.min(100, (timing.remaining / timing.ttlMs) * 100));
+        ttlEl.classList.toggle('is-urgent', timing.remaining <= URGENT_MS);
+        ttlEl.setAttribute('aria-valuenow', String(Math.round(pct)));
+        ttlBar.style.transition = 'none';
+        ttlBar.style.transform = 'scaleX(' + (pct / 100) + ')';
+        void ttlBar.offsetWidth;
+        ttlBar.style.transition = 'transform ' + timing.remaining + 'ms linear';
+        ttlBar.style.transform = 'scaleX(0)';
+
+        if (timing.remaining > URGENT_MS) {
+          ttlUrgentTimer = setTimeout(function () {
+            ttlEl.classList.add('is-urgent');
+          }, timing.remaining - URGENT_MS);
+        }
+
+        var showId = data.id;
+        ttlHideTimer = setTimeout(function () {
+          if (lastShowId !== showId) return;
+          lastShowId = null;
+          ttlEl.setAttribute('aria-valuenow', '0');
+          hideTab();
+        }, timing.remaining + 40);
+      }
 
       function fillTab(data) {
         nameEl.textContent = data.name || '';
@@ -744,9 +807,11 @@
         methodEl.textContent = data.instructions
           ? data.instructions
           : 'No method yet.';
+        armTtlBar(data);
       }
 
       function hideTab(then) {
+        clearTtlTimers();
         if (slideTimer) {
           clearTimeout(slideTimer);
           slideTimer = null;
