@@ -81,6 +81,40 @@
     </section>
 
     <section class="panel">
+      <h2>Away-from-home stock mirror</h2>
+      <p class="muted small-gap">
+        Cloudflare Worker that holds a read-only copy of What’s On Hand.
+        Push happens automatically when you toggle stock; you can also push
+        from <a href="{{ url_for('admin_inventory') }}">Inventory</a>.
+      </p>
+      <div class="form-grid">
+        <label class="span-2">Worker URL
+          <input name="stock_mirror_url" value="{{ stock_mirror_url }}"
+                 placeholder="https://bar-stock.brian-952.workers.dev"
+                 inputmode="url" autocomplete="off">
+        </label>
+        <label class="span-2">Write secret
+          <input name="stock_mirror_write_secret" type="password" value=""
+                 placeholder="{% if stock_mirror_secret_set %}•••••••• (leave blank to keep){% else %}Worker WRITE_SECRET{% endif %}"
+                 autocomplete="new-password">
+        </label>
+        <label class="span-2">Read secret
+          <input name="stock_mirror_read_secret" type="password" value=""
+                 placeholder="{% if stock_mirror_read_secret_set %}•••••••• (leave blank to keep){% else %}Worker READ_SECRET{% endif %}"
+                 autocomplete="new-password">
+        </label>
+      </div>
+      <p class="muted small-gap" style="margin-top: 0.75rem">
+        {% if mirror_view_url %}
+        Phone bookmark:
+        <a href="{{ mirror_view_url }}" target="_blank" rel="noopener">{{ mirror_view_url }}</a><br>
+        {% endif %}
+        {% if mirror_last_push %}Last successful push: {{ mirror_last_push }}{% else %}Not pushed yet.{% endif %}
+        {% if mirror_last_error %}<br>Last error: {{ mirror_last_error }}{% endif %}
+      </p>
+    </section>
+
+    <section class="panel">
       <h2>Bar link (second QR)</h2>
       <p class="muted small-gap">
         URL phones open after joining Wi‑Fi. Use a LAN address guests can reach

@@ -2,10 +2,15 @@
 """Home bar recipes: TV display, interactive filter, open admin (Flask + SQLite)."""
 
 import io
+import json
+import logging
 import os
 import sqlite3
 import time
+import urllib.error
+import urllib.request
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import qrcode
@@ -21,6 +26,8 @@ from flask import (
     send_file,
     url_for,
 )
+
+logger = logging.getLogger(__name__)
 
 from ingredient_icons import category_slug, icon_for_ingredient
 from ticker_quotes import extra_ticker_quotes
@@ -45,6 +52,11 @@ SETTING_WIFI_HIDDEN = "wifi_hidden"  # "0" | "1"
 SETTING_PUBLIC_BASE_URL = "public_base_url"  # e.g. http://192.168.1.10
 SETTING_BAR_NAME = "bar_name"
 SETTING_TV_BOARD = "tv_board"
+SETTING_STOCK_MIRROR_URL = "stock_mirror_url"
+SETTING_STOCK_MIRROR_WRITE_SECRET = "stock_mirror_write_secret"
+SETTING_STOCK_MIRROR_READ_SECRET = "stock_mirror_read_secret"
+SETTING_STOCK_MIRROR_LAST_PUSH = "stock_mirror_last_push"
+SETTING_STOCK_MIRROR_LAST_ERROR = "stock_mirror_last_error"
 DEFAULT_BAR_NAME = "The Raven"
 # How long a "Show on TV" pin stays if nobody finishes or dismisses it.
 TV_SHOW_TTL_SECONDS = 15 * 60
@@ -196,6 +208,13 @@ def init_db():
         SETTING_WIFI_HIDDEN: os.environ.get("DRINKS_WIFI_HIDDEN", "0"),
         SETTING_PUBLIC_BASE_URL: os.environ.get("DRINKS_PUBLIC_BASE_URL", ""),
         SETTING_BAR_NAME: os.environ.get("DRINKS_BAR_NAME", DEFAULT_BAR_NAME),
+        SETTING_STOCK_MIRROR_URL: os.environ.get("DRINKS_STOCK_MIRROR_URL", ""),
+        SETTING_STOCK_MIRROR_WRITE_SECRET: os.environ.get(
+            "DRINKS_STOCK_MIRROR_WRITE_SECRET", ""
+        ),
+        SETTING_STOCK_MIRROR_READ_SECRET: os.environ.get(
+            "DRINKS_STOCK_MIRROR_READ_SECRET", ""
+        ),
     }
     for key, value in defaults.items():
         row = db.execute(
@@ -1787,6 +1806,159 @@ def get_all_settings():
     return {r["key"]: r["value"] for r in rows}
 
 
+def stock_mirror_url():
+    """Worker base URL from settings, falling back to env."""
+    value = (get_setting(SETTING_STOCK_MIRROR_URL) or "").strip().rstrip("/")
+    if value:
+        return value
+    return (os.environ.get("DRINKS_STOCK_MIRROR_URL") or "").strip().rstrip("/")
+
+
+def stock_mirror_write_secret():
+    value = (get_setting(SETTING_STOCK_MIRROR_WRITE_SECRET) or "").strip()
+    if value:
+        return value
+    return (os.environ.get("DRINKS_STOCK_MIRROR_WRITE_SECRET") or "").strip()
+
+
+def stock_mirror_read_secret():
+    value = (get_setting(SETTING_STOCK_MIRROR_READ_SECRET) or "").strip()
+    if value:
+        return value
+    return (os.environ.get("DRINKS_STOCK_MIRROR_READ_SECRET") or "").strip()
+
+
+def stock_mirror_view_url():
+    """Public Worker page URL including the read token, or empty if incomplete."""
+    base = stock_mirror_url()
+    secret = stock_mirror_read_secret()
+    if not base or not secret:
+        return ""
+    return f"{base}/?k={secret}"
+
+
+def recipes_used_by_ingredients(ingredient_ids):
+    """Map ingredient id → recipes that use it (necessary first). Matches Admin Inventory."""
+    if not ingredient_ids:
+        return {}
+    placeholders = ",".join("?" * len(ingredient_ids))
+    rows = get_db().execute(
+        f"""
+        SELECT
+            ri.ingredient_id,
+            ri.necessary,
+            r.id AS recipe_id,
+            r.name AS recipe_name
+        FROM recipe_ingredients ri
+        JOIN recipes r ON r.id = ri.recipe_id
+        WHERE ri.ingredient_id IN ({placeholders})
+        ORDER BY ri.necessary DESC, r.name COLLATE NOCASE ASC
+        """,
+        list(ingredient_ids),
+    ).fetchall()
+    out = {}
+    for row in rows:
+        out.setdefault(row["ingredient_id"], []).append(
+            {
+                "name": row["recipe_name"],
+                "necessary": bool(row["necessary"]),
+            }
+        )
+    return out
+
+
+def build_stock_mirror_snapshot():
+    """JSON payload for the Cloudflare stock mirror Worker."""
+    ingredients = fetch_ingredients()
+    used_by = recipes_used_by_ingredients([i["id"] for i in ingredients])
+    payload_ings = []
+    for ing in ingredients:
+        on_hand = bool(ing["in_filter"])
+        payload_ings.append(
+            {
+                "id": ing["id"],
+                "name": ing["name"],
+                "category": ing["category"] or "Other",
+                "on_hand": on_hand,
+                "used_by": used_by.get(ing["id"], []),
+            }
+        )
+    on_hand_count = sum(1 for i in payload_ings if i["on_hand"])
+    return {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "bar_name": bar_name(),
+        "on_hand_count": on_hand_count,
+        "out_count": len(payload_ings) - on_hand_count,
+        "ingredients": payload_ings,
+    }
+
+
+def push_stock_mirror():
+    """
+    PUT the current stock snapshot to the Cloudflare Worker.
+    Returns (ok: bool, message: str). Never raises to callers.
+    """
+    base = stock_mirror_url()
+    secret = stock_mirror_write_secret()
+    if not base or not secret:
+        return False, "Stock mirror URL or write secret not configured."
+
+    snapshot = build_stock_mirror_snapshot()
+    body = json.dumps(snapshot).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base}/stock",
+        data=body,
+        method="PUT",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {secret}",
+            # Browser-like UA: some workers.dev bot checks reject Python-urllib.
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; drinks-bar-stock-mirror/1.0; "
+                "+https://github.com/bhwithun)"
+            ),
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            if resp.status >= 400:
+                msg = f"Mirror HTTP {resp.status}: {raw[:200]}"
+                set_setting(SETTING_STOCK_MIRROR_LAST_ERROR, msg)
+                get_db().commit()
+                return False, msg
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:200]
+        msg = f"Mirror HTTP {exc.code}: {detail}"
+        logger.warning("stock mirror push failed: %s", msg)
+        set_setting(SETTING_STOCK_MIRROR_LAST_ERROR, msg)
+        get_db().commit()
+        return False, msg
+    except Exception as exc:
+        msg = f"Mirror push failed: {exc}"
+        logger.warning("stock mirror push failed: %s", exc)
+        set_setting(SETTING_STOCK_MIRROR_LAST_ERROR, msg)
+        get_db().commit()
+        return False, msg
+
+    set_setting(SETTING_STOCK_MIRROR_LAST_PUSH, snapshot["updated_at"])
+    set_setting(SETTING_STOCK_MIRROR_LAST_ERROR, "")
+    get_db().commit()
+    return True, snapshot["updated_at"]
+
+
+def push_stock_mirror_soft():
+    """Best-effort push after local stock edits; never blocks the UI path."""
+    try:
+        if not stock_mirror_url() or not stock_mirror_write_secret():
+            return
+        ok, msg = push_stock_mirror()
+        if not ok:
+            logger.warning("stock mirror soft push: %s", msg)
+    except Exception as exc:
+        logger.warning("stock mirror soft push crashed: %s", exc)
+
+
 def wifi_qr_escape(value):
     """Escape special characters for WIFI: QR payload fields."""
     if not value:
@@ -3251,6 +3423,7 @@ def toggle_filter_ingredient(ingredient_id):
         (new_val, ingredient_id),
     )
     db.commit()
+    push_stock_mirror_soft()
     on_hand = db.execute(
         "SELECT COUNT(*) AS n FROM ingredients WHERE in_filter = 1"
     ).fetchone()["n"]
@@ -3373,9 +3546,17 @@ def admin():
     )
 
 
-@app.route("/admin/inventory")
+@app.route("/admin/inventory", methods=["GET", "POST"])
 def admin_inventory():
     """Shopping-oriented inventory: out of stock first, then on hand."""
+    if request.method == "POST" and request.form.get("action") == "push_mirror":
+        ok, msg = push_stock_mirror()
+        if ok:
+            flash(f"Stock mirror updated ({msg}).", "ok")
+        else:
+            flash(msg, "error")
+        return redirect(url_for("admin_inventory"))
+
     ingredients = fetch_ingredients()
     out = [i for i in ingredients if not i["in_filter"]]
     on_hand = [i for i in ingredients if i["in_filter"]]
@@ -3409,6 +3590,7 @@ def admin_inventory():
                 }
             )
 
+    mirror_configured = bool(stock_mirror_url() and stock_mirror_write_secret())
     return render_template(
         "admin_inventory.html",
         out_groups=group_by_category(out),
@@ -3417,6 +3599,11 @@ def admin_inventory():
         out_count=len(out),
         on_hand_count=len(on_hand),
         total_count=len(ingredients),
+        mirror_configured=mirror_configured,
+        mirror_url=stock_mirror_url(),
+        mirror_view_url=stock_mirror_view_url(),
+        mirror_last_push=get_setting(SETTING_STOCK_MIRROR_LAST_PUSH),
+        mirror_last_error=get_setting(SETTING_STOCK_MIRROR_LAST_ERROR),
     )
 
 
@@ -3484,6 +3671,15 @@ def admin_settings():
         set_setting(SETTING_PUBLIC_BASE_URL, base_url)
         name = (request.form.get("bar_name") or "").strip() or DEFAULT_BAR_NAME
         set_setting(SETTING_BAR_NAME, name)
+        mirror_url = (request.form.get("stock_mirror_url") or "").strip().rstrip("/")
+        mirror_secret = (request.form.get("stock_mirror_write_secret") or "").strip()
+        mirror_read = (request.form.get("stock_mirror_read_secret") or "").strip()
+        set_setting(SETTING_STOCK_MIRROR_URL, mirror_url)
+        # Blank secret fields keep the existing values (don't wipe on save).
+        if mirror_secret:
+            set_setting(SETTING_STOCK_MIRROR_WRITE_SECRET, mirror_secret)
+        if mirror_read:
+            set_setting(SETTING_STOCK_MIRROR_READ_SECRET, mirror_read)
         get_db().commit()
         flash("Settings saved.", "ok")
         return redirect(url_for("admin_settings"))
@@ -3498,6 +3694,12 @@ def admin_settings():
         public_base_url=get_setting(SETTING_PUBLIC_BASE_URL),
         suggested_base_url=request.url_root.rstrip("/"),
         bar_url=resolve_bar_url(),
+        stock_mirror_url=stock_mirror_url(),
+        stock_mirror_secret_set=bool(stock_mirror_write_secret()),
+        stock_mirror_read_secret_set=bool(stock_mirror_read_secret()),
+        mirror_view_url=stock_mirror_view_url(),
+        mirror_last_push=get_setting(SETTING_STOCK_MIRROR_LAST_PUSH),
+        mirror_last_error=get_setting(SETTING_STOCK_MIRROR_LAST_ERROR),
     )
 
 

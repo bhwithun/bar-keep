@@ -29,10 +29,40 @@
         </p>
       </div>
       <nav class="admin-nav">
-        <button type="button" class="btn primary" onclick="window.print()">Print</button>
+        {% if mirror_view_url %}
+        <a class="btn ghost" href="{{ mirror_view_url }}" target="_blank" rel="noopener">Cloud stock page</a>
+        {% endif %}
+        {% if mirror_configured %}
+        <form method="post" style="display:inline">
+          <input type="hidden" name="action" value="push_mirror">
+          <button type="submit" class="btn ghost">Push stock to cloud</button>
+        </form>
+        {% endif %}
       </nav>
     </header>
   </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-list no-print">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% if mirror_configured or mirror_view_url %}
+  <p class="muted small-gap no-print">
+    Cloud mirror:
+    {% if mirror_view_url %}
+    <a href="{{ mirror_view_url }}" target="_blank" rel="noopener">open Cloudflare stock page</a>
+    ·
+    {% endif %}
+    {% if mirror_last_push %}last push {{ mirror_last_push }}{% else %}never pushed{% endif %}
+    {% if mirror_last_error %} · <span class="flash error" style="display:inline">{{ mirror_last_error }}</span>{% endif %}
+  </p>
+  {% endif %}
 
   <section class="panel inventory-out">
     <h2>Need to buy / restock ({{ out_count }})</h2>

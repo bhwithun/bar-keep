@@ -1,0 +1,14 @@
+{
+  "name": "bar-stock",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secret:read": "wrangler secret put READ_SECRET",
+    "secret:write": "wrangler secret put WRITE_SECRET"
+  },
+  "devDependencies": {
+    "wrangler": "^4.28.0"
+  }
+}

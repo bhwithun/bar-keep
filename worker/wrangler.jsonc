@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bar-stock",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "kv_namespaces": [
+    { "binding": "STOCK", "id": "da54c4aa4f8f41f4b078b3ca58d21900" }
+  ],
+  "triggers": {
+    "crons": []
+  }
+}

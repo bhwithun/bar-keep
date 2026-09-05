@@ -139,8 +139,25 @@ Then open:
 | `DRINKS_WIFI_PASSWORD` | _(empty)_ | Seeds Wi‑Fi QR |
 | `DRINKS_WIFI_SECURITY` | `WPA` | `WPA`, `WEP`, or `nopass` |
 | `DRINKS_WIFI_HIDDEN` | `0` | `1` if the SSID is hidden |
+| `DRINKS_STOCK_MIRROR_URL` | _(empty)_ | Cloudflare Worker base URL for away-from-home stock |
+| `DRINKS_STOCK_MIRROR_WRITE_SECRET` | _(empty)_ | Bearer token matching the Worker `WRITE_SECRET` |
+| `DRINKS_STOCK_MIRROR_READ_SECRET` | _(empty)_ | Token for `?k=` on the Worker page (Admin Inventory link) |
 
 Empty settings are seeded from these env vars once; afterward **Admin → Settings** wins.
+
+### Away-from-home stock mirror
+
+The home app stays on your LAN. A separate Cloudflare Worker (`worker/`) holds a
+read-only copy of ingredient on-hand / out status (including which drinks use
+each out-of-stock bottle).
+
+1. Deploy the Worker from `worker/` (`npx wrangler deploy`), create the `STOCK` KV binding, and set secrets `READ_SECRET` + `WRITE_SECRET`.
+2. In **Admin → Settings**, set the Worker URL and write secret (or use the env vars above).
+3. Open **Admin → Inventory → Push stock to cloud** once, then bookmark:
+
+   `https://<worker>.workers.dev/?k=<READ_SECRET>`
+
+Toggling stock on **What’s On Hand** pushes the mirror automatically. If Cloudflare is unreachable, local toggles still succeed.
 
 ### Production-ish on a home server
 
