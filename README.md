@@ -20,7 +20,8 @@ Hosts who keep a real bar cart (or cabinet) and want guests to self-serve the me
 |---------|-----|------|
 | **Guest** (`/guest`) | Guests on phones | Browse, rate, check off ingredients while pouring, pin a drink to the TV |
 | **TV** (`/tv`) | Living-room display | Big makeable menu, theme boards, stock board, QR codes, pour toasts |
-| **Admin** (`/admin`) | Host | Recipes, inventory, substitutes, Wi‑Fi / guest-link settings |
+| **Admin** (`/admin`) | Host | Recipes, inventory, substitutes, Wi‑Fi / guest-link settings, cloud stock mirror |
+| **Cloud stock** (Worker) | Host, away from home | Read-only on-hand / out board on Cloudflare — no LAN required |
 
 Legacy `/bar/…` URLs redirect to `/guest/…`. Opening `/` sends you to the TV board.
 
@@ -65,6 +66,18 @@ From a recipe page, **Show on TV** pins that drink on the living-room board so t
 - **TV → Stock** — on-hand vs out, at a glance  
 - **Admin → Inventory** — out-of-stock first, with which recipes each missing bottle blocks  
 
+### Away-from-home stock (Cloudflare Worker)
+
+The home app stays on your LAN. A small Cloudflare Worker (`worker/`) holds a **read-only copy** of What’s On Hand so you can check the cabinet from anywhere — grocery run, trip planning, “do we still have Campari?”
+
+- Lists every ingredient as **on hand** or **out**, with the drinks that use it  
+- Search / tap a drink name to filter; matches highlight **green** (on hand) or **orange** (out)  
+- Home remains authoritative: toggles on **What’s On Hand** push the mirror automatically  
+- **Admin → Inventory** links to the cloud page and can **Push stock to cloud** manually  
+- Protected with a read token in the bookmark URL (`?k=…`); writes use a separate secret  
+
+Setup and env vars are under [Away-from-home stock mirror](#away-from-home-stock-mirror) below.
+
 ### Guest access QR codes
 
 The TV can show:
@@ -101,8 +114,9 @@ TV highlights: `/tv`, `/tv/themes`, `/tv/theme/<slug>`, `/tv/featured`, `/tv/sto
 - **SQLite** (`drinks.db`) — recipes, ingredients, ratings, pours, settings
 - **Jinja** templates + static CSS/JS/SVG (glassware, ingredient icons, TV stage sets)
 - **qrcode** + Pillow for join QR images
+- Optional **Cloudflare Worker** + KV (`worker/`) for the away-from-home stock mirror
 
-No separate frontend build step.
+No separate frontend build step for the home app. The Worker is plain JS deployed with Wrangler.
 
 ---
 
@@ -147,17 +161,32 @@ Empty settings are seeded from these env vars once; afterward **Admin → Settin
 
 ### Away-from-home stock mirror
 
-The home app stays on your LAN. A separate Cloudflare Worker (`worker/`) holds a
-read-only copy of ingredient on-hand / out status (including which drinks use
-each out-of-stock bottle).
+Optional. Skip this if you only use the bar on the home LAN.
 
-1. Deploy the Worker from `worker/` (`npx wrangler deploy`), create the `STOCK` KV binding, and set secrets `READ_SECRET` + `WRITE_SECRET`.
-2. In **Admin → Settings**, set the Worker URL and write secret (or use the env vars above).
-3. Open **Admin → Inventory → Push stock to cloud** once, then bookmark:
+**What it does:** mirrors ingredient stock (and which drinks use each bottle) to a Cloudflare Worker so you can open a phone bookmark off-network. The Worker is view-only; you still edit stock on the LAN.
 
-   `https://<worker>.workers.dev/?k=<READ_SECRET>`
+**Deploy the Worker**
 
-Toggling stock on **What’s On Hand** pushes the mirror automatically. If Cloudflare is unreachable, local toggles still succeed.
+```bash
+cd worker
+npm install
+npx wrangler secret put READ_SECRET    # long random token for ?k= bookmarks
+npx wrangler secret put WRITE_SECRET   # long random token for home-app pushes
+npx wrangler deploy
+```
+
+Wrangler provisions the `STOCK` KV namespace on deploy (see `worker/wrangler.jsonc`). More detail: `worker/README.md`.
+
+**Connect the home app**
+
+1. **Admin → Settings → Away-from-home stock mirror** — set Worker URL, write secret, and read secret  
+   (or seed `DRINKS_STOCK_MIRROR_URL`, `DRINKS_STOCK_MIRROR_WRITE_SECRET`, `DRINKS_STOCK_MIRROR_READ_SECRET`).  
+2. **Admin → Inventory → Push stock to cloud** once to seed the snapshot.  
+3. Bookmark (also linked from Inventory):
+
+   `https://<worker-name>.<subdomain>.workers.dev/?k=<READ_SECRET>`
+
+After that, toggling stock on **What’s On Hand** pushes the mirror automatically. If Cloudflare is unreachable, local toggles still succeed.
 
 ### Production-ish on a home server
 
@@ -178,6 +207,7 @@ run.sh                 Launch helper
 restart_server.sh      systemctl restart helper
 static/                CSS, JS, favicons, glassware/, tv-sets/, sounds
 templates/             Guest, TV, and admin pages; SVG icon sets
+worker/                Cloudflare Worker for away-from-home stock mirror
 ```
 
 ---
@@ -189,7 +219,7 @@ templates/             Guest, TV, and admin pages; SVG icon sets
 3. Point guests at `/guest` (or the QR on the TV).  
 4. They pick a theme, a bottle, or the full menu — only pourable drinks show by default.  
 5. When someone orders, they hit **Show on TV**; you build from the big screen.  
-6. Restock later from **Admin → Inventory**.
+6. Restock later from **Admin → Inventory** (or check the cloud stock page while you’re at the store).
 
 ---
 
