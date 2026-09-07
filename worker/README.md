@@ -1,4 +1,4 @@
-# bar-stock Worker
+# addled-cortex-worker
 
 Read-only Cloudflare mirror of What’s On Hand for away-from-home checks.
 
